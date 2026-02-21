@@ -1,15 +1,7 @@
-
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_log.h>
 #include <SDL3/SDL_main.h>
-#include <SDL3/SDL_render.h>
-#include <SDL3/SDL_stdinc.h>
-#include <SDL3/SDL_timer.h>
 #include <SDL3_image/SDL_image.h>
-#include <cstddef>
-#include <cstdlib>
 #include <glm/glm.hpp>
-#include <inttypes.h>
 #include <iostream>
 
 #define SDL_Flags SDL_INIT_VIDEO
@@ -17,38 +9,38 @@
 static char debug_string[32];
 
 struct AppState {
-  bool running = true;
-  SDL_Window* window = nullptr;
-  SDL_Renderer* renderer = nullptr;
-  SDL_Texture* idleTex = nullptr;
-  SDL_Texture* backTex = nullptr;
-  uint16_t Width = 800;
-  uint16_t Height = 600;
-  float frame = 0;
+  bool running{true};
+  SDL_Window* window{nullptr};
+  SDL_Renderer* renderer{nullptr};
+  SDL_Texture* idleTex{nullptr};
+  SDL_Texture* backTex{nullptr};
+  uint16_t Width{800};
+  uint16_t Height{600};
+  float frame{0};
 };
 
 struct Player {
-  int wasd = 0;
-  float PXP = 0;
-  float PYP = 0;
-  float MovementSpeed = 0.1;
-  bool PRotated = false;
+  int wasd{0};
+  float PXP{0};
+  float PYP{0};
+  float MovementSpeed{0.1};
+  bool PRotated{false};
 } P;
 
 class App {
 
 public:
   AppState State;
+  uint64_t Dt_ns; // delta time in nano seconds
+  uint64_t Now;
 
   void run() {
     init();
     while (State.running) {
       AppEvents();
-      Uint64 dt_ns;
-      Uint64 now;
-      Time(now, dt_ns);
-      animation(now);
-      rendering(dt_ns);
+      Time(Now, Dt_ns);
+      animation(Now);
+      rendering(Dt_ns);
     }
     cleanup(State);
   }
@@ -149,7 +141,7 @@ private:
     }
   }
 
-  void rendering(Uint64 dt_ns) {
+  void rendering(uint64_t& dt_ns) {
     dt_ns = dt_ns / 1000000.0f;
 
     SDL_FRect src{
@@ -196,8 +188,8 @@ private:
     std::cout << "App is Closed" << std::endl;
   }
 
-  void animation(Uint64 now) {
-    static Uint64 last = 0;
+  void animation(uint64_t now) {
+    static uint64_t last{0};
     if (now - last > 200000000) {
       last = now;
       State.frame += 1;
@@ -206,10 +198,10 @@ private:
       }
     }
   }
-  void Time(Uint64& now, Uint64& dt_ns) {
-    static Uint64 accu = 0;
-    static Uint64 last = 0;
-    static Uint64 past = 0;
+  void Time(uint64_t& now, uint64_t& dt_ns) {
+    static uint64_t accu = 0;
+    static uint64_t last = 0;
+    static uint64_t past = 0;
 
     now = SDL_GetTicksNS();
     dt_ns = now - past;
@@ -221,15 +213,29 @@ private:
     }
     past = now;
     accu += 1;
-    Uint64 elapsed = SDL_GetTicksNS() - now;
+    uint64_t elapsed = SDL_GetTicksNS() - now;
     if (elapsed < 999999) {
       SDL_DelayNS(999999 - elapsed);
     }
   }
 };
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[], char* arge[]) {
   App app;
+
+  std::cout << argc << " arguments passed.\n";
+
+  for (int i = 0; i < argc; ++i) {
+    std::cout << "Argument " << i << " is: " << argv[i] << "\n";
+  }
+  if (argc > 1) {
+    std::string command{argv[1]};
+    if (command == "--env") {
+      for (int i = 0; arge[i] != nullptr; ++i) {
+        std::cout << "ENV_" << i << ": " << arge[i] << "\n";
+      }
+    }
+  }
 
   try {
     app.run();
