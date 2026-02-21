@@ -5,7 +5,7 @@ SDLTest: main.cpp
 	    -I/usr/local/include -I$(VULKAN_SDK)/include \
 	    -L/usr/local/lib64 -L$(VULKAN_SDK)/lib \
 	    -Wl,-rpath,/usr/local/lib64 -Wl,-rpath,$(VULKAN_SDK)/lib -Wl,--enable-new-dtags \
-	    -lSDL3 -lvulkan
+	    -lSDL3 -lvulkan -lSDL3_image
 
 .PHONY: test clean debug shader
 
