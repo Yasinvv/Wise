@@ -363,7 +363,7 @@ private:
 
   void createGraphicsPipeline() {
     vk::raii::ShaderModule shaderModule{
-        createShaderModule(readFile("../data/shaders/slang.spv"))};
+        createShaderModule(readFile("data/shaders/slang.spv"))};
 
     vk::PipelineShaderStageCreateInfo vertShaderStageInfo{
         .stage = vk::ShaderStageFlagBits::eVertex,

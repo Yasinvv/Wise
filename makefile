@@ -1,7 +1,7 @@
 VULKAN_SDK=/home/yasinvv/Vulkan/vulkansdk-linux-x86_64-1.4.321.1/1.4.321.1/x86_64
-
-SDLTest: main.cpp
-	g++ -std=c++23 -o prog main.cpp \
+SRC = source/main.cpp
+SDLTest: $(SRC)
+	g++ -std=c++23 -o prog $(SRC) \
 	    -I/usr/local/include -I$(VULKAN_SDK)/include \
 	    -L/usr/local/lib64 -L$(VULKAN_SDK)/lib \
 	    -Wl,-rpath,/usr/local/lib64 -Wl,-rpath,$(VULKAN_SDK)/lib -Wl,--enable-new-dtags \
