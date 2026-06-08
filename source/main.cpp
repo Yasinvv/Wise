@@ -1,3 +1,6 @@
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
+#include <SDL3/SDL_vulkan.h>
 #include <algorithm>
 #include <assert.h>
 #include <cstdlib>
@@ -6,15 +9,8 @@
 #include <iostream>
 #include <limits>
 #include <stdexcept>
-#include <vector>
 
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_main.h>
-#include <SDL3/SDL_vulkan.h>
-
-#define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
-
-#if defined(__INTELLISENSE__) || !defined(USE_CPP20_MODULES)
+#if defined(__INTELLISENSE__) || !defined(USE_CPP23_MODULES)
 #include <vulkan/vulkan_raii.hpp>
 #else
 import vulkan_hpp;
@@ -44,6 +40,7 @@ public:
 
 private:
   SDL_Window* window{nullptr};
+  bool appState{true};
   vk::raii::Context context;
   vk::raii::Instance instance{nullptr};
   vk::raii::DebugUtilsMessengerEXT debugMessenger{nullptr};
@@ -68,6 +65,7 @@ private:
   std::vector<vk::raii::Semaphore> renderFinishedSemaphores;
   std::vector<vk::raii::Fence> inFlightFences;
   uint32_t frameIndex{0};
+  std::string pathToShader{SHADER_PATH};
 
   std::vector<const char*> requiredDeviceExtension{
       vk::KHRSwapchainExtensionName};
@@ -104,11 +102,29 @@ private:
   }
 
   void mainLoop() {
-    while (true) {
+    while (appState) {
+      AppEvents();
       drawFrame();
     }
-
     device.waitIdle();
+  }
+
+  void AppEvents() {
+
+    SDL_Event event{0};
+    int Current_Window_Width = event.window.data1;
+    int Current_Window_Height = event.window.data2;
+
+    while (SDL_PollEvent(&event)) {
+      switch (event.type) {
+      case SDL_EVENT_QUIT:
+        appState = false;
+        break;
+      case SDL_EVENT_WINDOW_RESIZED:
+        SDL_Log(" %d %d ", Current_Window_Width, Current_Window_Height);
+        break;
+      }
+    }
   }
 
   void cleanup() {
@@ -363,7 +379,7 @@ private:
 
   void createGraphicsPipeline() {
     vk::raii::ShaderModule shaderModule{
-        createShaderModule(readFile("data/shaders/slang.spv"))};
+        createShaderModule(readFile(pathToShader))};
 
     vk::PipelineShaderStageCreateInfo vertShaderStageInfo{
         .stage = vk::ShaderStageFlagBits::eVertex,
