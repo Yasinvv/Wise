@@ -135,9 +135,9 @@ private:
   void createInstance() {
     constexpr vk::ApplicationInfo appInfo{
         .pApplicationName = "Ys",
-        .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
+        .applicationVersion = VK_MAKE_VERSION(0, 0, 1),
         .pEngineName = "Ys",
-        .engineVersion = VK_MAKE_VERSION(1, 0, 0),
+        .engineVersion = VK_MAKE_VERSION(0, 0, 1),
         .apiVersion = vk::ApiVersion14};
 
     // Get the required layers
