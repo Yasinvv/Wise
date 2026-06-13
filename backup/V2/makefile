@@ -1,6 +1,8 @@
 VULKAN_SDK=/home/yasinvv/Vulkan/vulkansdk-linux-x86_64-1.4.321.1/1.4.321.1/x86_64
 SRC = source/main.cpp
+SHADER_FILE_PATH = data/shaders/slang.spv
 CPPFLAGS = -std=c++23 \
+					 -DSHADER_PATH="\"$(SHADER_FILE_PATH)\""\
 					 -DVULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 SDLTest: $(SRC)
 	g++ $(CPPFLAGS) -o prog $(SRC) \
