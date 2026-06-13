@@ -1,5 +1,6 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#include <SDL3/SDL_video.h>
 #include <SDL3/SDL_vulkan.h>
 #include <algorithm>
 #include <array>
@@ -32,8 +33,8 @@ import vulkan_hpp;
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
-constexpr uint32_t WIDTH = 800;
-constexpr uint32_t HEIGHT = 600;
+uint32_t WIDTH = 800;
+uint32_t HEIGHT = 600;
 const std::string MODEL_PATH = "data/models/viking_room.obj";
 const std::string TEXTURE_PATH = "data/textures/viking_room.png";
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
@@ -172,7 +173,8 @@ private:
     }
 
     // Window
-    window = SDL_CreateWindow("Demo", WIDTH, HEIGHT, SDL_WINDOW_VULKAN);
+    window = SDL_CreateWindow("Demo", WIDTH, HEIGHT,
+                              SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
     if (!window) {
       SDL_Log("Error Creating Window: %s", SDL_GetError());
     }
