@@ -129,7 +129,6 @@ private:
   bool appState{true};
   SDL_Event event{0};
   UniformTime timer;
-  UniformTime fpsTimer;
   vk::raii::Context context;
   vk::raii::Instance instance = nullptr;
   vk::raii::DebugUtilsMessengerEXT debugMessenger = nullptr;
@@ -185,7 +184,7 @@ private:
       vk::KHRSwapchainExtensionName};
 
   void initWindow() {
-    SDL_SetAppMetadata("Wise", "0.0.1", "Ys");
+    SDL_SetAppMetadata("preview", "0.0.1", "Ys");
 
     // SDL_Initialization
     if (!SDL_Init(SDL_INIT_VIDEO)) {
@@ -194,7 +193,7 @@ private:
     }
 
     // Window
-    window = SDL_CreateWindow("Demo", WIDTH, HEIGHT,
+    window = SDL_CreateWindow("preview", WIDTH, HEIGHT,
                               SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
     if (!window) {
       SDL_Log("Error Creating Window: %s", SDL_GetError());
@@ -247,7 +246,7 @@ private:
     if (MaxFPS > 0) {
 
       float targetFrameRate{1.0f / static_cast<float>(MaxFPS)};
-      float timespend{fpsTimer.getDeltaTime()};
+      float timespend{timer.getDeltaTime()};
 
       if (timespend < targetFrameRate) {
 
@@ -279,6 +278,8 @@ private:
         }
       } break;
       case SDL_EVENT_KEY_DOWN: {
+        if ((event.key.scancode = SDL_SCANCODE_D)) {
+        }
       };
       }
     }
@@ -305,10 +306,10 @@ private:
 
   void createInstance() {
     constexpr vk::ApplicationInfo appInfo{
-        .pApplicationName = "Hello Triangle",
-        .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
-        .pEngineName = "No Engine",
-        .engineVersion = VK_MAKE_VERSION(1, 0, 0),
+        .pApplicationName = "preview",
+        .applicationVersion = VK_MAKE_VERSION(0, 0, 1),
+        .pEngineName = "Wise",
+        .engineVersion = VK_MAKE_VERSION(0, 0, 1),
         .apiVersion = vk::ApiVersion14};
 
     // Get the required layers
