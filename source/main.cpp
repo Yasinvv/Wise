@@ -1,10 +1,13 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#include <SDL3/SDL_mouse.h>
+#include <SDL3/SDL_oldnames.h>
 #include <SDL3/SDL_vulkan.h>
 #include <algorithm>
 #include <array>
 #include <assert.h>
 #include <chrono>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
@@ -107,11 +110,34 @@ struct UniformTime {
     auto currentTime = std::chrono::high_resolution_clock::now();
     return std::chrono::duration<float>(currentTime - startTime).count();
   }
-  float getDeltaTime() {
+  float getDeltaTime() const {
     auto Current = std::chrono::high_resolution_clock::now();
     float dt = std::chrono::duration<float>(Current - past).count();
     past = Current;
     return dt;
+  }
+};
+
+struct CameraSettings {
+  float yaw{90.0f};
+  float pitch{0.0f};
+  float sensitivity{0.1f};
+  uint8_t wasd = 0;
+  glm::vec3 pos{0.0f, -3.0f, 0.5f};
+  glm::vec3 front{0.0f, 1.0f, 0.0f};
+  glm::vec3 up{0.0f, 0.0f, 1.0f};
+  float cameraSpeed = 1.0f;
+
+  void addRotation(float xoffset, float yoffset) {
+    yaw -= xoffset * sensitivity;
+    pitch -= yoffset * sensitivity;
+    pitch = std::clamp(pitch, -89.0f, 89.0f);
+
+    glm::vec3 direction;
+    direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+    direction.y = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    direction.z = sin(glm::radians(pitch));
+    front = glm::normalize(direction);
   }
 };
 
@@ -129,6 +155,7 @@ private:
   bool appState{true};
   SDL_Event event{0};
   UniformTime timer;
+  CameraSettings cam;
   vk::raii::Context context;
   vk::raii::Instance instance = nullptr;
   vk::raii::DebugUtilsMessengerEXT debugMessenger = nullptr;
@@ -199,6 +226,7 @@ private:
       SDL_Log("Error Creating Window: %s", SDL_GetError());
     }
     SDL_Log("SDL Initialized");
+    SDL_SetWindowRelativeMouseMode(window, true);
   }
 
   void framebufferResizeCallback(int width, int height) {
@@ -233,20 +261,20 @@ private:
   void mainLoop() {
     while (appState) {
       float deltatime = timer.getDeltaTime();
-
       std::cout << deltatime << "\n";
       AppEvents();
+      updatePlayerMovement(deltatime);
       drawFrame();
-      FPSCalculation();
+      FPSCalculation(deltatime);
     }
     device.waitIdle();
   }
 
-  void FPSCalculation() {
+  void FPSCalculation(float deltaTime) {
     if (MaxFPS > 0) {
 
       float targetFrameRate{1.0f / static_cast<float>(MaxFPS)};
-      float timespend{timer.getDeltaTime()};
+      float timespend{deltaTime};
 
       if (timespend < targetFrameRate) {
 
@@ -258,10 +286,22 @@ private:
     }
   }
 
-  void AppEvents() {
+  void updatePlayerMovement(float deltaTime) {
+    float velocity = cam.cameraSpeed * deltaTime;
 
-    int Current_Window_Width = event.window.data1;
-    int Current_Window_Height = event.window.data2;
+    if (cam.wasd & 8)
+      cam.pos += cam.front * velocity;
+    if (cam.wasd & 2)
+      cam.pos -= cam.front * velocity;
+
+    glm::vec3 right = glm::normalize(glm::cross(cam.front, cam.up));
+    if (cam.wasd & 1)
+      cam.pos += right * velocity;
+    if (cam.wasd & 4)
+      cam.pos -= right * velocity;
+  }
+
+  void AppEvents() {
 
     while (SDL_PollEvent(&event)) {
       switch (event.type) {
@@ -269,6 +309,9 @@ private:
         appState = false;
         break;
       case SDL_EVENT_WINDOW_RESIZED: {
+        int Current_Window_Width = event.window.data1;
+        int Current_Window_Height = event.window.data2;
+
         auto* app = static_cast<APP*>(SDL_GetPointerProperty(
             SDL_GetWindowProperties(SDL_GetWindowFromID(event.window.windowID)),
             "user_pointer", nullptr));
@@ -277,10 +320,37 @@ private:
                                          event.window.data2);
         }
       } break;
-      case SDL_EVENT_KEY_DOWN: {
-        if ((event.key.scancode = SDL_SCANCODE_D)) {
+      case SDL_EVENT_KEY_DOWN:
+        if (event.key.scancode == SDL_SCANCODE_D) {
+          cam.wasd |= 1;
         }
-      };
+        if (event.key.scancode == SDL_SCANCODE_A) {
+          cam.wasd |= 4;
+        }
+        if (event.key.scancode == SDL_SCANCODE_W) {
+          cam.wasd |= 8;
+        }
+        if (event.key.scancode == SDL_SCANCODE_S) {
+          cam.wasd |= 2;
+        }
+        break;
+      case SDL_EVENT_KEY_UP:
+        if (event.key.scancode == SDL_SCANCODE_D) {
+          cam.wasd &= 30;
+        }
+        if (event.key.scancode == SDL_SCANCODE_A) {
+          cam.wasd &= 27;
+        }
+        if (event.key.scancode == SDL_SCANCODE_W) {
+          cam.wasd &= 23;
+        }
+        if (event.key.scancode == SDL_SCANCODE_S) {
+          cam.wasd &= 29;
+        }
+        break;
+      case SDL_EVENT_MOUSE_MOTION:
+        cam.addRotation(event.motion.xrel, event.motion.yrel);
+        break;
       }
     }
   }
@@ -1211,21 +1281,14 @@ private:
     }
   }
 
-  void updateUniformBuffer(uint32_t currentImage) const {
-    /*static auto startTime = std::chrono::high_resolution_clock::now();
-
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    float time = std::chrono::duration<float>(currentTime -
-    startTime).count();*/
+  void updateUniformBuffer(uint32_t currentImage) {
     float time{timer.getTime()};
 
     UniformBufferObject ubo{};
 
-    ubo.model = rotate(glm::mat4(1.0f), time * glm::radians(10.0f),
-                       glm::vec3(0.0f, 0.0f, 1.0f));
-
-    ubo.view = lookAt(glm::vec3(2.0f, 0.5f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f),
-                      glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.view = glm::lookAt(cam.pos, cam.pos + cam.front, cam.up);
+    ubo.model = glm::mat4(1.0f);
+    // ubo.view = glm::lookAt(P.pos, glm::vec3(0.0f, 0.0f, 0.0f), P.up);
     ubo.proj = glm::perspective(glm::radians(45.0f),
                                 static_cast<float>(swapChainExtent.width) /
                                     static_cast<float>(swapChainExtent.height),
