@@ -1288,7 +1288,6 @@ private:
 
     ubo.view = glm::lookAt(cam.pos, cam.pos + cam.front, cam.up);
     ubo.model = glm::mat4(1.0f);
-    // ubo.view = glm::lookAt(P.pos, glm::vec3(0.0f, 0.0f, 0.0f), P.up);
     ubo.proj = glm::perspective(glm::radians(45.0f),
                                 static_cast<float>(swapChainExtent.width) /
                                     static_cast<float>(swapChainExtent.height),
