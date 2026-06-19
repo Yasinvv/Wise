@@ -11,6 +11,7 @@
 #include <iostream>
 #include <limits>
 #include <stdexcept>
+#include <thread>
 #include <vector>
 
 #if defined(__INTELLISENSE__) || !defined(USE_CPP20_MODULES)
@@ -31,9 +32,9 @@ import vulkan_hpp;
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
-
-uint32_t WIDTH = 800;
-uint32_t HEIGHT = 600;
+uint8_t MaxFPS{30U};
+uint32_t WIDTH{800U};
+uint32_t HEIGHT{600U};
 const std::string MODEL_PATH = "data/models/viking_room.obj";
 const std::string TEXTURE_PATH = "data/textures/viking_room.png";
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
@@ -95,7 +96,26 @@ struct UniformBufferObject {
   alignas(16) glm::mat4 proj;
 };
 
-class HelloTriangleApplication {
+struct UniformTime {
+
+  inline static const auto startTime =
+      std::chrono::high_resolution_clock::now();
+
+  inline static auto past = std::chrono::high_resolution_clock::now();
+
+  float getTime() const {
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    return std::chrono::duration<float>(currentTime - startTime).count();
+  }
+  float getDeltaTime() {
+    auto Current = std::chrono::high_resolution_clock::now();
+    float dt = std::chrono::duration<float>(Current - past).count();
+    past = Current;
+    return dt;
+  }
+};
+
+class APP {
 public:
   void run() {
     initWindow();
@@ -108,6 +128,8 @@ private:
   SDL_Window* window = nullptr;
   bool appState{true};
   SDL_Event event{0};
+  UniformTime timer;
+  UniformTime fpsTimer;
   vk::raii::Context context;
   vk::raii::Instance instance = nullptr;
   vk::raii::DebugUtilsMessengerEXT debugMessenger = nullptr;
@@ -211,10 +233,30 @@ private:
 
   void mainLoop() {
     while (appState) {
+      float deltatime = timer.getDeltaTime();
+
+      std::cout << deltatime << "\n";
       AppEvents();
       drawFrame();
+      FPSCalculation();
     }
     device.waitIdle();
+  }
+
+  void FPSCalculation() {
+    if (MaxFPS > 0) {
+
+      float targetFrameRate{1.0f / static_cast<float>(MaxFPS)};
+      float timespend{fpsTimer.getDeltaTime()};
+
+      if (timespend < targetFrameRate) {
+
+        float sleepTimeSc{targetFrameRate - timespend};
+        auto sleepDuration{std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::duration<float>(sleepTimeSc))};
+        std::this_thread::sleep_for(sleepDuration);
+      }
+    }
   }
 
   void AppEvents() {
@@ -228,10 +270,9 @@ private:
         appState = false;
         break;
       case SDL_EVENT_WINDOW_RESIZED: {
-        auto* app = static_cast<HelloTriangleApplication*>(
-            SDL_GetPointerProperty(SDL_GetWindowProperties(SDL_GetWindowFromID(
-                                       event.window.windowID)),
-                                   "user_pointer", nullptr));
+        auto* app = static_cast<APP*>(SDL_GetPointerProperty(
+            SDL_GetWindowProperties(SDL_GetWindowFromID(event.window.windowID)),
+            "user_pointer", nullptr));
         if (app) {
           app->framebufferResizeCallback(event.window.data1,
                                          event.window.data2);
@@ -1170,15 +1211,15 @@ private:
   }
 
   void updateUniformBuffer(uint32_t currentImage) const {
-    static auto startTime = std::chrono::high_resolution_clock::now();
+    /*static auto startTime = std::chrono::high_resolution_clock::now();
 
     auto currentTime = std::chrono::high_resolution_clock::now();
-    float time = std::chrono::duration<float>(currentTime - startTime).count();
+    float time = std::chrono::duration<float>(currentTime -
+    startTime).count();*/
+    float time{timer.getTime()};
 
     UniformBufferObject ubo{};
 
-    /* ubo.model = rotate(glm::mat4(1.0f), time * glm::radians(10.0f),
-                        glm::vec3(0.0f, 0.0f, 1.0f));*/
     ubo.model = rotate(glm::mat4(1.0f), time * glm::radians(10.0f),
                        glm::vec3(0.0f, 0.0f, 1.0f));
 
@@ -1363,7 +1404,7 @@ private:
 
 int main() {
   try {
-    HelloTriangleApplication app;
+    APP app;
     app.run();
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;
