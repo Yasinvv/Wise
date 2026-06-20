@@ -699,7 +699,7 @@ private:
         .depthClampEnable = vk::False,
         .rasterizerDiscardEnable = vk::False,
         .polygonMode = vk::PolygonMode::eFill,
-        .cullMode = vk::CullModeFlagBits::eBack,
+        .cullMode = vk::CullModeFlagBits::eNone,
         .frontFace = vk::FrontFace::eCounterClockwise,
         .depthBiasEnable = vk::False,
         .lineWidth = 1.0f};
@@ -1378,9 +1378,9 @@ private:
     float time{timer.getTime()};
 
     UniformBufferObject ubo{};
-
+    ubo.model = rotate(glm::mat4(1.0f), glm::radians(-90.0f),
+                       glm::vec3(0.0f, 0.0f, 1.0f));
     ubo.view = glm::lookAt(cam.pos, cam.pos + cam.front, cam.up);
-    ubo.model = glm::mat4(1.0f);
     ubo.proj = glm::perspective(glm::radians(45.0f),
                                 static_cast<float>(swapChainExtent.width) /
                                     static_cast<float>(swapChainExtent.height),
