@@ -1,5 +1,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#include <SDL3/SDL_scancode.h>
+#include <SDL3/SDL_video.h>
 #include <SDL3/SDL_vulkan.h>
 #include <algorithm>
 #include <array>
@@ -37,9 +39,9 @@ import vulkan_hpp;
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
-uint8_t MaxFPS{129U};
-uint32_t WIDTH{800U};
-uint32_t HEIGHT{600U};
+uint8_t MaxFPS{30U};
+uint32_t WIDTH{1920U};
+uint32_t HEIGHT{1080U};
 const std::string MODEL_PATH = "data/models/viking_room.obj";
 const std::string TEXTURE_PATH = "data/textures/viking_room.png";
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
@@ -344,6 +346,12 @@ private:
         }
       } break;
       case SDL_EVENT_KEY_DOWN:
+        if (event.key.scancode == SDL_SCANCODE_EQUALS) {
+          MaxFPS += 1;
+        }
+        if (event.key.scancode == SDL_SCANCODE_MINUS) {
+          MaxFPS -= 1;
+        }
         if (event.key.scancode == SDL_SCANCODE_ESCAPE) {
           appState = false;
         }
@@ -1282,7 +1290,14 @@ private:
     ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "FPS: %.1f (%.4f ms)",
                        1.0f / deltaTime, deltaTime * 1000.0f);
     ImGui::Text("VK1.4\nSDL3");
+    ImGui::Separator();
+    ImGui::PushItemWidth(50.0f);
+    uint8_t minFPS = 0;
+    uint8_t maxFPSLimit = 240;
 
+    ImGui::SliderScalar("Max FPS Limit ( - , + )", ImGuiDataType_U8, &MaxFPS,
+                        &minFPS, &maxFPSLimit, "%u");
+    ImGui::PopItemWidth();
     ImGui::End();
 
     ImGui::Render();
