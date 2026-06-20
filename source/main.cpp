@@ -1,7 +1,5 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
-#include <SDL3/SDL_mouse.h>
-#include <SDL3/SDL_oldnames.h>
 #include <SDL3/SDL_vulkan.h>
 #include <algorithm>
 #include <array>
@@ -110,7 +108,7 @@ struct UniformTime {
     auto currentTime = std::chrono::high_resolution_clock::now();
     return std::chrono::duration<float>(currentTime - startTime).count();
   }
-  float getDeltaTime() const {
+  float getDeltaTime() {
     auto Current = std::chrono::high_resolution_clock::now();
     float dt = std::chrono::duration<float>(Current - past).count();
     past = Current;
@@ -207,6 +205,17 @@ private:
 
   bool framebufferResized = false;
 
+  struct InfiniteGrid {
+    vk::raii::PipelineLayout pipelineLayout = nullptr;
+    vk::raii::Pipeline graphicsPipeline = nullptr;
+
+    vk::raii::Buffer vertexBuffer = nullptr;
+    vk::raii::DeviceMemory vertexBufferMemory = nullptr;
+    vk::raii::Buffer indexBuffer = nullptr;
+    vk::raii::DeviceMemory indexBufferMemory = nullptr;
+    uint32_t indexCount{0};
+  } m_infiniteGrid;
+
   std::vector<const char*> requiredDeviceExtension = {
       vk::KHRSwapchainExtensionName};
 
@@ -249,6 +258,8 @@ private:
     createTextureImageView();
     createTextureSampler();
     loadModel();
+    createGridMesh();
+    createGridPipeline();
     createVertexBuffer();
     createIndexBuffer();
     createUniformBuffers();
@@ -265,20 +276,22 @@ private:
       AppEvents();
       updatePlayerMovement(deltatime);
       drawFrame();
-      FPSCalculation(deltatime);
+      FPSCalculation();
     }
     device.waitIdle();
   }
 
-  void FPSCalculation(float deltaTime) {
+  void FPSCalculation() {
     if (MaxFPS > 0) {
 
       float targetFrameRate{1.0f / static_cast<float>(MaxFPS)};
-      float timespend{deltaTime};
 
-      if (timespend < targetFrameRate) {
+      auto now = std::chrono::high_resolution_clock::now();
+      float timeSpent = std::chrono::duration<float>(now - timer.past).count();
 
-        float sleepTimeSc{targetFrameRate - timespend};
+      if (timeSpent < targetFrameRate) {
+
+        float sleepTimeSc{targetFrameRate - timeSpent};
         auto sleepDuration{std::chrono::duration_cast<std::chrono::nanoseconds>(
             std::chrono::duration<float>(sleepTimeSc))};
         std::this_thread::sleep_for(sleepDuration);
@@ -321,6 +334,9 @@ private:
         }
       } break;
       case SDL_EVENT_KEY_DOWN:
+        if (event.key.scancode == SDL_SCANCODE_ESCAPE) {
+          appState = false;
+        }
         if (event.key.scancode == SDL_SCANCODE_D) {
           cam.wasd |= 1;
         }
@@ -1158,18 +1174,14 @@ private:
     auto& commandBuffer = commandBuffers[frameIndex];
     commandBuffer.begin({});
 
-    // Before starting rendering, transition the swapchain image to
-    // vk::ImageLayout::eColorAttachmentOptimal
-    transition_image_layout(
-        swapChainImages[imageIndex], vk::ImageLayout::eUndefined,
-        vk::ImageLayout::eColorAttachmentOptimal,
-        {}, // srcAccessMask (no need to wait for previous operations)
-        vk::AccessFlagBits2::eColorAttachmentWrite,         // dstAccessMask
-        vk::PipelineStageFlagBits2::eColorAttachmentOutput, // srcStage
-        vk::PipelineStageFlagBits2::eColorAttachmentOutput, // dstStage
-        vk::ImageAspectFlagBits::eColor);
+    transition_image_layout(swapChainImages[imageIndex],
+                            vk::ImageLayout::eUndefined,
+                            vk::ImageLayout::eColorAttachmentOptimal, {},
+                            vk::AccessFlagBits2::eColorAttachmentWrite,
+                            vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                            vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                            vk::ImageAspectFlagBits::eColor);
 
-    // Transition depth image to depth attachment optimal layout
     transition_image_layout(*depthImage, vk::ImageLayout::eUndefined,
                             vk::ImageLayout::eDepthAttachmentOptimal,
                             vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
@@ -1194,7 +1206,7 @@ private:
         .imageView = depthImageView,
         .imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
         .loadOp = vk::AttachmentLoadOp::eClear,
-        .storeOp = vk::AttachmentStoreOp::eDontCare,
+        .storeOp = vk::AttachmentStoreOp::eStore,
         .clearValue = clearDepth};
 
     vk::RenderingInfo renderingInfo = {
@@ -1205,14 +1217,16 @@ private:
         .pDepthAttachment = &depthAttachmentInfo};
 
     commandBuffer.beginRendering(renderingInfo);
-    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
-                               *graphicsPipeline);
+
     commandBuffer.setViewport(
         0,
         vk::Viewport(0.0f, 0.0f, static_cast<float>(swapChainExtent.width),
                      static_cast<float>(swapChainExtent.height), 0.0f, 1.0f));
     commandBuffer.setScissor(0,
                              vk::Rect2D(vk::Offset2D(0, 0), swapChainExtent));
+
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
+                               *graphicsPipeline);
     commandBuffer.bindVertexBuffers(0, *vertexBuffer, {0});
     commandBuffer.bindIndexBuffer(
         *indexBuffer, 0,
@@ -1222,18 +1236,28 @@ private:
                                      *descriptorSets[frameIndex], nullptr);
     commandBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0,
                               0);
+
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
+                               *m_infiniteGrid.graphicsPipeline);
+    commandBuffer.bindVertexBuffers(0, *m_infiniteGrid.vertexBuffer, {0});
+    commandBuffer.bindIndexBuffer(*m_infiniteGrid.indexBuffer, 0,
+                                  vk::IndexType::eUint32);
+
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+                                     *m_infiniteGrid.pipelineLayout, 0,
+                                     *descriptorSets[frameIndex], nullptr);
+
+    commandBuffer.drawIndexed(m_infiniteGrid.indexCount, 1, 0, 0, 0);
+
     commandBuffer.endRendering();
 
-    // After rendering, transition the swapchain image to
-    // vk::ImageLayout::ePresentSrcKHR
-    transition_image_layout(
-        swapChainImages[imageIndex], vk::ImageLayout::eColorAttachmentOptimal,
-        vk::ImageLayout::ePresentSrcKHR,
-        vk::AccessFlagBits2::eColorAttachmentWrite,         // srcAccessMask
-        {},                                                 // dstAccessMask
-        vk::PipelineStageFlagBits2::eColorAttachmentOutput, // srcStage
-        vk::PipelineStageFlagBits2::eBottomOfPipe,          // dstStage
-        vk::ImageAspectFlagBits::eColor);
+    transition_image_layout(swapChainImages[imageIndex],
+                            vk::ImageLayout::eColorAttachmentOptimal,
+                            vk::ImageLayout::ePresentSrcKHR,
+                            vk::AccessFlagBits2::eColorAttachmentWrite, {},
+                            vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                            vk::PipelineStageFlagBits2::eBottomOfPipe,
+                            vk::ImageAspectFlagBits::eColor);
     commandBuffer.end();
   }
 
@@ -1423,6 +1447,173 @@ private:
                                  capabilities.maxImageExtent.width),
             std::clamp<uint32_t>(height, capabilities.minImageExtent.height,
                                  capabilities.maxImageExtent.height)};
+  }
+
+  void createGridMesh() {
+    std::vector<Vertex> gridVertices = {
+        {{-50.0f, -50.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {-50.0f, -50.0f}},
+        {{50.0f, -50.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {50.0f, -50.0f}},
+        {{50.0f, 50.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {50.0f, 50.0f}},
+        {{-50.0f, 50.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {-50.0f, 50.0f}}};
+
+    std::vector<uint32_t> gridIndices = {0, 1, 2, 2, 3, 0};
+
+    m_infiniteGrid.indexCount = static_cast<uint32_t>(gridIndices.size());
+
+    vk::DeviceSize vertexBufferSize =
+        sizeof(gridVertices[0]) * gridVertices.size();
+    vk::DeviceSize indexBufferSize =
+        sizeof(gridIndices[0]) * gridIndices.size();
+
+    {
+      auto [stagingBuffer, stagingBufferMemory] =
+          createBuffer(vertexBufferSize, vk::BufferUsageFlagBits::eTransferSrc,
+                       vk::MemoryPropertyFlagBits::eHostVisible |
+                           vk::MemoryPropertyFlagBits::eHostCoherent);
+
+      void* data = stagingBufferMemory.mapMemory(0, vertexBufferSize);
+      std::memcpy(data, gridVertices.data(),
+                  static_cast<size_t>(vertexBufferSize));
+      stagingBufferMemory.unmapMemory();
+
+      std::tie(m_infiniteGrid.vertexBuffer, m_infiniteGrid.vertexBufferMemory) =
+          createBuffer(vertexBufferSize,
+                       vk::BufferUsageFlagBits::eTransferDst |
+                           vk::BufferUsageFlagBits::eVertexBuffer,
+                       vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+      copyBuffer(stagingBuffer, m_infiniteGrid.vertexBuffer, vertexBufferSize);
+    }
+
+    {
+      auto [stagingBuffer, stagingBufferMemory] =
+          createBuffer(indexBufferSize, vk::BufferUsageFlagBits::eTransferSrc,
+                       vk::MemoryPropertyFlagBits::eHostVisible |
+                           vk::MemoryPropertyFlagBits::eHostCoherent);
+
+      void* data = stagingBufferMemory.mapMemory(0, indexBufferSize);
+      std::memcpy(data, gridIndices.data(),
+                  static_cast<size_t>(indexBufferSize));
+      stagingBufferMemory.unmapMemory();
+
+      std::tie(m_infiniteGrid.indexBuffer, m_infiniteGrid.indexBufferMemory) =
+          createBuffer(indexBufferSize,
+                       vk::BufferUsageFlagBits::eTransferDst |
+                           vk::BufferUsageFlagBits::eIndexBuffer,
+                       vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+      copyBuffer(stagingBuffer, m_infiniteGrid.indexBuffer, indexBufferSize);
+    }
+  }
+
+  void createGridPipeline() {
+    auto shaderCode = readFile("data/shaders/grid.spv");
+    vk::raii::ShaderModule shaderModule = createShaderModule(shaderCode);
+
+    vk::PipelineShaderStageCreateInfo vertShaderStageInfo{
+        .stage = vk::ShaderStageFlagBits::eVertex,
+        .module = *shaderModule,
+        .pName = "vertexMain"};
+
+    vk::PipelineShaderStageCreateInfo fragShaderStageInfo{
+        .stage = vk::ShaderStageFlagBits::eFragment,
+        .module = *shaderModule,
+        .pName = "fragMain"};
+
+    vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo,
+                                                        fragShaderStageInfo};
+
+    auto bindingDescription = Vertex::getBindingDescription();
+    auto attributeDescriptions = Vertex::getAttributeDescriptions();
+
+    vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
+        .vertexBindingDescriptionCount = 1,
+        .pVertexBindingDescriptions = &bindingDescription,
+        .vertexAttributeDescriptionCount =
+            static_cast<uint32_t>(attributeDescriptions.size()),
+        .pVertexAttributeDescriptions = attributeDescriptions.data()};
+
+    vk::PipelineInputAssemblyStateCreateInfo inputAssembly{
+        .topology = vk::PrimitiveTopology::eTriangleList};
+
+    vk::PipelineViewportStateCreateInfo viewportState{.viewportCount = 1,
+                                                      .scissorCount = 1};
+
+    vk::PipelineRasterizationStateCreateInfo rasterizer{
+        .depthClampEnable = vk::False,
+        .rasterizerDiscardEnable = vk::False,
+        .polygonMode = vk::PolygonMode::eFill,
+        .cullMode = vk::CullModeFlagBits::eNone,
+        .frontFace = vk::FrontFace::eCounterClockwise,
+        .depthBiasEnable = vk::False,
+        .lineWidth = 1.0f};
+
+    vk::PipelineMultisampleStateCreateInfo multisampling{
+        .rasterizationSamples = vk::SampleCountFlagBits::e1,
+        .sampleShadingEnable = vk::False};
+
+    vk::PipelineDepthStencilStateCreateInfo depthStencil{
+        .depthTestEnable = vk::True,
+        .depthWriteEnable = vk::False,
+        .depthCompareOp = vk::CompareOp::eLessOrEqual,
+        .depthBoundsTestEnable = vk::False,
+        .stencilTestEnable = vk::False};
+
+    vk::PipelineColorBlendAttachmentState colorBlendAttachment{
+        .blendEnable = vk::True,
+        .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
+        .dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
+        .colorBlendOp = vk::BlendOp::eAdd,
+        .srcAlphaBlendFactor = vk::BlendFactor::eOne,
+        .dstAlphaBlendFactor = vk::BlendFactor::eZero,
+        .alphaBlendOp = vk::BlendOp::eAdd,
+        .colorWriteMask =
+            vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
+            vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA};
+
+    vk::PipelineColorBlendStateCreateInfo colorBlending{
+        .logicOpEnable = vk::False,
+        .logicOp = vk::LogicOp::eCopy,
+        .attachmentCount = 1,
+        .pAttachments = &colorBlendAttachment};
+
+    std::vector<vk::DynamicState> dynamicStates = {vk::DynamicState::eViewport,
+                                                   vk::DynamicState::eScissor};
+    vk::PipelineDynamicStateCreateInfo dynamicState{
+        .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
+        .pDynamicStates = dynamicStates.data()};
+
+    vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
+        .setLayoutCount = 1,
+        .pSetLayouts = &*descriptorSetLayout,
+        .pushConstantRangeCount = 0};
+    m_infiniteGrid.pipelineLayout =
+        vk::raii::PipelineLayout(device, pipelineLayoutInfo);
+
+    vk::Format depthFormat = findDepthFormat();
+
+    vk::StructureChain<vk::GraphicsPipelineCreateInfo,
+                       vk::PipelineRenderingCreateInfo>
+        pipelineCreateInfoChain = {
+            {.stageCount = 2,
+             .pStages = shaderStages,
+             .pVertexInputState = &vertexInputInfo,
+             .pInputAssemblyState = &inputAssembly,
+             .pViewportState = &viewportState,
+             .pRasterizationState = &rasterizer,
+             .pMultisampleState = &multisampling,
+             .pDepthStencilState = &depthStencil,
+             .pColorBlendState = &colorBlending,
+             .pDynamicState = &dynamicState,
+             .layout = *m_infiniteGrid.pipelineLayout,
+             .renderPass = nullptr},
+            {.colorAttachmentCount = 1,
+             .pColorAttachmentFormats = &swapChainSurfaceFormat.format,
+             .depthAttachmentFormat = depthFormat}};
+
+    m_infiniteGrid.graphicsPipeline = vk::raii::Pipeline(
+        device, nullptr,
+        pipelineCreateInfoChain.get<vk::GraphicsPipelineCreateInfo>());
   }
 
   [[nodiscard]] std::vector<const char*> getRequiredInstanceExtensions() {
