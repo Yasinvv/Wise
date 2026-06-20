@@ -15,6 +15,10 @@
 #include <thread>
 #include <vector>
 
+#include "imgui.h"
+#include "imgui_impl_sdl3.h"
+#include "imgui_impl_vulkan.h"
+
 #if defined(__INTELLISENSE__) || !defined(USE_CPP20_MODULES)
 #include <vulkan/vulkan_raii.hpp>
 #else
@@ -33,7 +37,7 @@ import vulkan_hpp;
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
-uint8_t MaxFPS{30U};
+uint8_t MaxFPS{129U};
 uint32_t WIDTH{800U};
 uint32_t HEIGHT{600U};
 const std::string MODEL_PATH = "data/models/viking_room.obj";
@@ -154,6 +158,7 @@ private:
   SDL_Event event{0};
   UniformTime timer;
   CameraSettings cam;
+  vk::raii::DescriptorPool imGuiDescriptorPool = nullptr;
   vk::raii::Context context;
   vk::raii::Instance instance = nullptr;
   vk::raii::DebugUtilsMessengerEXT debugMessenger = nullptr;
@@ -267,6 +272,8 @@ private:
     createDescriptorSets();
     createCommandBuffers();
     createSyncObjects();
+
+    initImGui();
   }
 
   void mainLoop() {
@@ -275,7 +282,7 @@ private:
       std::cout << deltatime << "\n";
       AppEvents();
       updatePlayerMovement(deltatime);
-      drawFrame();
+      drawFrame(deltatime);
       FPSCalculation();
     }
     device.waitIdle();
@@ -317,6 +324,9 @@ private:
   void AppEvents() {
 
     while (SDL_PollEvent(&event)) {
+      if (ImGui::GetCurrentContext() != nullptr) {
+        ImGui_ImplSDL3_ProcessEvent(&event);
+      }
       switch (event.type) {
       case SDL_EVENT_QUIT:
         appState = false;
@@ -377,6 +387,9 @@ private:
   }
 
   void cleanup() {
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplSDL3_Shutdown();
+    ImGui::DestroyContext();
     SDL_DestroyWindow(window);
     SDL_Quit();
   }
@@ -1170,7 +1183,7 @@ private:
     commandBuffers = vk::raii::CommandBuffers(device, allocInfo);
   }
 
-  void recordCommandBuffer(uint32_t imageIndex) {
+  void recordCommandBuffer(uint32_t imageIndex, float deltaTime) {
     auto& commandBuffer = commandBuffers[frameIndex];
     commandBuffer.begin({});
 
@@ -1248,16 +1261,57 @@ private:
                                      *descriptorSets[frameIndex], nullptr);
 
     commandBuffer.drawIndexed(m_infiniteGrid.indexCount, 1, 0, 0, 0);
+    //
+    //
+    // IMGUI
+    //
+    //
+
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
+    ImGui::NewFrame();
+
+    ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Always);
+    ImGui::Begin("Debug Info", nullptr,
+                 ImGuiWindowFlags_NoDecoration |
+                     ImGuiWindowFlags_AlwaysAutoResize |
+                     ImGuiWindowFlags_NoSavedSettings |
+                     ImGuiWindowFlags_NoFocusOnAppearing |
+                     ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoBackground);
+
+    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "FPS: %.1f (%.4f ms)",
+                       1.0f / deltaTime, deltaTime * 1000.0f);
+    ImGui::Text("VK1.4\nSDL3");
+
+    ImGui::End();
+
+    ImGui::Render();
+
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *commandBuffer);
+
+    //
+    //
+    //
+    //
+    //
 
     commandBuffer.endRendering();
 
-    transition_image_layout(swapChainImages[imageIndex],
+    /*transition_image_layout(swapChainImages[imageIndex],
                             vk::ImageLayout::eColorAttachmentOptimal,
                             vk::ImageLayout::ePresentSrcKHR,
                             vk::AccessFlagBits2::eColorAttachmentWrite, {},
                             vk::PipelineStageFlagBits2::eColorAttachmentOutput,
                             vk::PipelineStageFlagBits2::eBottomOfPipe,
-                            vk::ImageAspectFlagBits::eColor);
+                            vk::ImageAspectFlagBits::eColor);*/
+
+    transition_image_layout(
+        swapChainImages[imageIndex], vk::ImageLayout::eColorAttachmentOptimal,
+        vk::ImageLayout::ePresentSrcKHR,
+        vk::AccessFlagBits2::eColorAttachmentWrite, vk::AccessFlagBits2::eNone,
+        vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+        vk::PipelineStageFlagBits2::eBottomOfPipe,
+        vk::ImageAspectFlagBits::eColor);
     commandBuffer.end();
   }
 
@@ -1321,7 +1375,7 @@ private:
     memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
   }
 
-  void drawFrame() {
+  void drawFrame(float deltaTime) {
     // Note: inFlightFences, presentCompleteSemaphores, and commandBuffers are
     // indexed by frameIndex,
     //       while renderFinishedSemaphores is indexed by imageIndex
@@ -1354,7 +1408,7 @@ private:
     device.resetFences(*inFlightFences[frameIndex]);
 
     commandBuffers[frameIndex].reset();
-    recordCommandBuffer(imageIndex);
+    recordCommandBuffer(imageIndex, deltaTime);
 
     vk::PipelineStageFlags waitDestinationStageMask(
         vk::PipelineStageFlagBits::eColorAttachmentOutput);
@@ -1614,6 +1668,60 @@ private:
     m_infiniteGrid.graphicsPipeline = vk::raii::Pipeline(
         device, nullptr,
         pipelineCreateInfoChain.get<vk::GraphicsPipelineCreateInfo>());
+  }
+
+  void initImGui() {
+    std::array<vk::DescriptorPoolSize, 6> poolSizes{
+        {{vk::DescriptorType::eSampler, 1000},
+         {vk::DescriptorType::eCombinedImageSampler, 1000},
+         {vk::DescriptorType::eSampledImage, 1000},
+         {vk::DescriptorType::eStorageImage, 1000},
+         {vk::DescriptorType::eUniformBuffer, 1000},
+         {vk::DescriptorType::eStorageBuffer, 1000}}};
+
+    vk::DescriptorPoolCreateInfo poolInfo{
+        .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+        .maxSets = 1000,
+        .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
+        .pPoolSizes = poolSizes.data()};
+
+    imGuiDescriptorPool = vk::raii::DescriptorPool(device, poolInfo);
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui::StyleColorsDark();
+
+    ImGui_ImplSDL3_InitForVulkan(window);
+
+    ImGui_ImplVulkan_InitInfo initInfo = {};
+    initInfo.Instance = *instance;
+    initInfo.PhysicalDevice = *physicalDevice;
+    initInfo.Device = *device;
+
+    initInfo.QueueFamily = 0;
+    initInfo.Queue = *vk::raii::Queue(device, initInfo.QueueFamily, 0);
+
+    initInfo.DescriptorPool = *imGuiDescriptorPool;
+    initInfo.MinImageCount = 2;
+    initInfo.ImageCount = static_cast<uint32_t>(swapChainImages.size());
+
+    initInfo.UseDynamicRendering = true;
+
+    VkFormat colorFmt = static_cast<VkFormat>(swapChainSurfaceFormat.format);
+
+    VkPipelineRenderingCreateInfo dynamicRenderingInfo{};
+    dynamicRenderingInfo.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+    dynamicRenderingInfo.colorAttachmentCount = 1;
+    dynamicRenderingInfo.pColorAttachmentFormats = &colorFmt;
+    dynamicRenderingInfo.depthAttachmentFormat =
+        static_cast<VkFormat>(findDepthFormat());
+
+    initInfo.PipelineInfoMain.PipelineRenderingCreateInfo =
+        dynamicRenderingInfo;
+    initInfo.ApiVersion = VK_API_VERSION_1_3;
+
+    ImGui_ImplVulkan_Init(&initInfo);
   }
 
   [[nodiscard]] std::vector<const char*> getRequiredInstanceExtensions() {
