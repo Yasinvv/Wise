@@ -1,8 +1,9 @@
 
 /*
- * Wise Graphics Engine
- * Copyright (c) 2026 Yasinvv
- * Licensed under the Apache-2.0 License. See LICENSE file for details.
+ * Based on code from Vulkan Tutorial (https://vulkan-tutorial.com)
+ * Copyright (c) 2016-2024 Alexander Overvoorde
+ * * Licensed under Creative Commons Attribution-ShareAlike 4.0 International
+ * (CC BY-SA 4.0) Project License can be found in the root LICENSE file.
  */
 
 #include <SDL3/SDL.h>
