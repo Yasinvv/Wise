@@ -1,3 +1,10 @@
+
+/*
+ * Wise Graphics Engine
+ * Copyright (c) 2026 Yasinvv
+ * Licensed under the MIT License. See LICENSE file for details.
+ */
+
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_vulkan.h>
