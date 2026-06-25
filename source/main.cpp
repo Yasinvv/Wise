@@ -1,7 +1,5 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
-#include <SDL3/SDL_scancode.h>
-#include <SDL3/SDL_video.h>
 #include <SDL3/SDL_vulkan.h>
 #include <algorithm>
 #include <array>
@@ -16,6 +14,7 @@
 #include <stdexcept>
 #include <thread>
 #include <vector>
+#include <vulkan/vulkan.hpp>
 
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
@@ -130,7 +129,7 @@ struct CameraSettings {
   glm::vec3 pos{0.0f, -3.0f, 0.5f};
   glm::vec3 front{0.0f, 1.0f, 0.0f};
   glm::vec3 up{0.0f, 0.0f, 1.0f};
-  float cameraSpeed = 1.0f;
+  float cameraSpeed = 1.5f;
 
   void addRotation(float xoffset, float yoffset) {
     yaw -= xoffset * sensitivity;
@@ -245,7 +244,8 @@ private:
     SDL_SetWindowRelativeMouseMode(window, true);
   }
 
-  void framebufferResizeCallback(int width, int height) {
+  void framebufferResizeCallback([[maybe_unused]] int width,
+                                 [[maybe_unused]] int height) {
     framebufferResized = true;
   }
 
@@ -334,8 +334,8 @@ private:
         appState = false;
         break;
       case SDL_EVENT_WINDOW_RESIZED: {
-        int Current_Window_Width = event.window.data1;
-        int Current_Window_Height = event.window.data2;
+        [[maybe_unused]] int Current_Window_Width = event.window.data1;
+        [[maybe_unused]] int Current_Window_Height = event.window.data2;
 
         auto* app = static_cast<APP*>(SDL_GetPointerProperty(
             SDL_GetWindowProperties(SDL_GetWindowFromID(event.window.windowID)),
@@ -570,7 +570,7 @@ private:
         break;
       }
     }
-    if (queueIndex == ~0) {
+    if (queueIndex == vk::QueueFamilyIgnored) {
       throw std::runtime_error(
           "Could not find a queue for graphics and present -> terminating");
     }
@@ -1146,7 +1146,7 @@ private:
         .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit};
     commandBuffer.begin(beginInfo);
 
-    return std::move(commandBuffer);
+    return commandBuffer;
   }
 
   void endSingleTimeCommands(vk::raii::CommandBuffer&& commandBuffer) {
@@ -1292,11 +1292,10 @@ private:
     ImGui::Text("VK1.4\nSDL3");
     ImGui::Separator();
     ImGui::PushItemWidth(50.0f);
-    uint8_t minFPS = 0;
-    uint8_t maxFPSLimit = 240;
+    uint8_t minFPS = 0, maxFPS = 240;
 
     ImGui::SliderScalar("Max FPS Limit ( - , + )", ImGuiDataType_U8, &MaxFPS,
-                        &minFPS, &maxFPSLimit, "%u");
+                        &minFPS, &maxFPS, "%u");
     ImGui::PopItemWidth();
     ImGui::End();
 
@@ -1375,7 +1374,7 @@ private:
   }
 
   void updateUniformBuffer(uint32_t currentImage) {
-    float time{timer.getTime()};
+    [[maybe_unused]] float time{timer.getTime()};
 
     UniformBufferObject ubo{};
     ubo.model = rotate(glm::mat4(1.0f), glm::radians(-90.0f),
@@ -1384,7 +1383,7 @@ private:
     ubo.proj = glm::perspective(glm::radians(45.0f),
                                 static_cast<float>(swapChainExtent.width) /
                                     static_cast<float>(swapChainExtent.height),
-                                0.1f, 10.0f);
+                                0.1f, 25.0f);
     ubo.proj[1][1] *= -1;
 
     memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));

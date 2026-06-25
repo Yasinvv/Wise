@@ -41,16 +41,16 @@ float4 fragMain(VertexToFragment input) : SV_Target {
   float2 grid = abs(vulkan_fract(coord - 0.5) - 0.5) / derivative;
   float line = min(grid.x, grid.y);
 
-  float minimum_width = 1.0;
+  float minimum_width = 2.0;
   float alpha = 1.0 - min(line / minimum_width, 1.0);
 
   float2 check = vulkan_fract(floor(coord) * 0.5);
   bool isEven = (check.x == check.y);
 
   float4 baseColor =
-      isEven ? float4(0.15, 0.15, 0.15, 1.0) : float4(0.2, 0.2, 0.2, 1.0);
+      isEven ? float4(0.3, 0.3, 0.3, 1.0) : float4(0.2, 0.2, 0.2, 1.0);
 
-  float4 lineColor = float4(1.0, 1.0, 1.0, 0.4);
+  float4 lineColor = float4(1.0, 1.0, 1.0, 0.3);
 
   float4 finalColor = lerp(baseColor, lineColor, alpha);
 
