@@ -24,6 +24,7 @@ set(IMGUI_FILES
     ${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp
     ${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp
 )
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_executable(prog ${SRC_FILES} ${IMGUI_FILES})
 
@@ -54,6 +55,7 @@ target_link_libraries(prog PRIVATE
     SDL3::SDL3
     SDL3_image::SDL3_image
 )
+
 
 if(UNIX AND NOT APPLE)
   set_target_properties(prog PROPERTIES
