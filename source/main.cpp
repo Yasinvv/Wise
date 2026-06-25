@@ -2,7 +2,7 @@
 /*
  * Wise Graphics Engine
  * Copyright (c) 2026 Yasinvv
- * Licensed under the MIT License. See LICENSE file for details.
+ * Licensed under the Apache-2.0 License. See LICENSE file for details.
  */
 
 #include <SDL3/SDL.h>
