@@ -1,7 +1,7 @@
 ## HOW TO COMPILE
 
 build :
-```bash
+```zsh
 git clone https://github.com/Yasinvv/Wise.git
 cd wise
 cmake -B build && cmake --build build
