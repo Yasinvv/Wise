@@ -2,7 +2,8 @@ build :
 `cmake -B build && cmake --build build`
 
 ## DEMO
-<img width="600" height="337" alt="DEMO" src="https://github.com/user-attachments/assets/685eab00-b782-47f7-95ae-390d710e104f" />
+<img width="320" height="180" alt="DEMO" src="https://github.com/user-attachments/assets/dc194d41-8d6b-4f61-b3ff-a0ad58060023" />
+
 
 ## License & Credits
 
