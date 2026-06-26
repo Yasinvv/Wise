@@ -1,10 +1,10 @@
 
 /*
- * Based on code from Vulkan Tutorial
- * (https://docs.vulkan.org/tutorial/latest) Copyright (c)
- * 2016-2024 Alexander Overvoorde
- * * Licensed under Creative Commons Attribution-ShareAlike 4.0 International
- * (CC BY-SA 4.0) Project License can be found in the root LICENSE file.
+ * Part of WisE
+ * Developed by Yasinvv (2026)
+ * * This file ports and adapts concepts from Vulkan-Tutorial by Alexander
+ * Overvoorde.
+ * Licensed under CC BY-SA 4.0 (See /LICENSE for details)
  */
 
 #include <SDL3/SDL.h>
