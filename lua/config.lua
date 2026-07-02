@@ -1,0 +1,1 @@
+SetMaxFPS = 55
