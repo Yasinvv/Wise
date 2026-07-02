@@ -35,7 +35,7 @@ float2 vulkan_fract(float2 x) { return x - floor(x); }
 
 [shader("fragment")]
 float4 fragMain(VertexToFragment input) : SV_Target {
-  float2 coord = input.outTexCoord;
+  float2 coord = input.outTexCoord / 0.3;
 
   float2 derivative = fwidth(coord);
   float2 grid = abs(vulkan_fract(coord - 0.5) - 0.5) / derivative;

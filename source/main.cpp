@@ -20,6 +20,7 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <sol/sol.hpp>
 #include <stdexcept>
 #include <thread>
 #include <vector>
@@ -47,7 +48,8 @@ import vulkan_hpp;
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
-uint8_t MaxFPS{30U};
+
+uint8_t MAXFPS{30U};
 uint32_t WIDTH{1920U};
 uint32_t HEIGHT{1080U};
 const std::string MODEL_PATH = "data/models/viking_room.obj";
@@ -300,9 +302,9 @@ private:
   }
 
   void FPSCalculation() {
-    if (MaxFPS > 0) {
+    if (MAXFPS > 0) {
 
-      float targetFrameRate{1.0f / static_cast<float>(MaxFPS)};
+      float targetFrameRate{1.0f / static_cast<float>(MAXFPS)};
 
       auto now = std::chrono::high_resolution_clock::now();
       float timeSpent = std::chrono::duration<float>(now - timer.past).count();
@@ -356,10 +358,16 @@ private:
       } break;
       case SDL_EVENT_KEY_DOWN:
         if (event.key.scancode == SDL_SCANCODE_EQUALS) {
-          MaxFPS += 1;
+          MAXFPS += 1;
+          if (MAXFPS == 0) {
+            MAXFPS += 1;
+          }
         }
         if (event.key.scancode == SDL_SCANCODE_MINUS) {
-          MaxFPS -= 1;
+          MAXFPS -= 1;
+          if (MAXFPS == 0) {
+            MAXFPS -= 1;
+          }
         }
         if (event.key.scancode == SDL_SCANCODE_ESCAPE) {
           appState = false;
@@ -1301,10 +1309,11 @@ private:
     ImGui::Text("VK1.4\nSDL3");
     ImGui::Separator();
     ImGui::PushItemWidth(50.0f);
-    uint8_t minFPS = 0, maxFPS = 240;
 
-    ImGui::SliderScalar("Max FPS Limit ( - , + )", ImGuiDataType_U8, &MaxFPS,
-                        &minFPS, &maxFPS, "%u");
+    uint8_t minFPS = 1, maxFPS = 240;
+
+    ImGui::SliderScalar("Max FPS Limit ( - , + )", ImGuiDataType_U8, &MAXFPS,
+                        &minFPS, &maxFPS, "%u", ImGuiSliderFlags_AlwaysClamp);
     ImGui::PopItemWidth();
     ImGui::End();
 
@@ -1620,7 +1629,7 @@ private:
         .depthClampEnable = vk::False,
         .rasterizerDiscardEnable = vk::False,
         .polygonMode = vk::PolygonMode::eFill,
-        .cullMode = vk::CullModeFlagBits::eNone,
+        .cullMode = vk::CullModeFlagBits::eBack,
         .frontFace = vk::FrontFace::eCounterClockwise,
         .depthBiasEnable = vk::False,
         .lineWidth = 1.0f};
@@ -1787,7 +1796,15 @@ private:
   }
 };
 
+void loadLuaConfigs() {
+  sol::state lua;
+  lua.open_libraries(sol::lib::base);
+  lua.script_file("lua/config.lua");
+  MAXFPS = lua["SetMaxFPS"].get<uint8_t>();
+}
+
 int main() {
+  loadLuaConfigs();
   try {
     APP app;
     app.run();

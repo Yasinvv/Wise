@@ -10,6 +10,9 @@ find_package(Vulkan REQUIRED)
 find_package(SDL3 REQUIRED)
 find_package(SDL3_image REQUIRED)
 
+find_package(Lua REQUIRED)
+find_package(sol2 REQUIRED)
+
 set(SRC_FILES
     source/main.cpp
 )
@@ -33,13 +36,18 @@ target_include_directories(prog PRIVATE
     ${Vulkan_INCLUDE_DIRS}
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
+    ${LUA_INCLUDE_DIR}
 )
 add_custom_target(copy_assets ALL
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     ${CMAKE_CURRENT_SOURCE_DIR}/data
     ${CMAKE_CURRENT_BINARY_DIR}/data
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_CURRENT_SOURCE_DIR}/lua
+    ${CMAKE_CURRENT_BINARY_DIR}/lua
+
     COMMENT "Copying assets to build directory..."
-)
+  )
 add_dependencies(prog copy_assets)
 
 target_compile_definitions(prog PRIVATE VULKAN_HPP_NO_STRUCT_CONSTRUCTORS)
@@ -54,6 +62,8 @@ target_link_libraries(prog PRIVATE
     Vulkan::Vulkan
     SDL3::SDL3
     SDL3_image::SDL3_image
+    ${LUA_LIBRARIES}
+    sol2::sol2
 )
 
 
