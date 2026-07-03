@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.28)
 
+set(CMAKE_C_COMPILER clang)
+set(CMAKE_CXX_COMPILER clang++)
+
 project(VulkanSDL3App LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -37,7 +40,7 @@ target_sources(prog
 target_sources(prog
     PRIVATE
         FILE_SET CXX_MODULES FILES
-        source/modules/renderer.cppm
+        source/modules/window.cppm
         source/modules/engine.cppm
 )
 
