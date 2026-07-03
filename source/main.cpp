@@ -2,13 +2,13 @@
 #include <cstdlib>
 #include <iostream>
 
-import renderer;
 import engine;
+import luaConfigs;
 
 int main() {
-  loadLuaConfigs();
   try {
     APP app;
+    WisE::loadLuaConfigs(app.luaConfigs);
     app.run();
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;

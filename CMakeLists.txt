@@ -1,12 +1,11 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.30)
 
 set(CMAKE_C_COMPILER clang)
 set(CMAKE_CXX_COMPILER clang++)
 
-project(VulkanSDL3App LANGUAGES CXX)
+project(WisE LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -42,6 +41,9 @@ target_sources(prog
         FILE_SET CXX_MODULES FILES
         source/modules/window.cppm
         source/modules/engine.cppm
+        source/modules/time.cppm
+        source/modules/camera.cppm
+        source/modules/luaConfigs.cppm
 )
 
 target_include_directories(prog PRIVATE

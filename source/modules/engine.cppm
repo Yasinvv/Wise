@@ -21,7 +21,6 @@ module;
 #include <fstream>
 #include <iostream>
 #include <limits>
-#include <sol/sol.hpp>
 #include <stdexcept>
 #include <thread>
 #include <vector>
@@ -42,7 +41,10 @@ module;
 #include <tiny_obj_loader.h>
 
 export module engine;
-import renderer;
+import window;
+import time;
+import camera;
+import luaConfigs;
 
 #ifdef NDEBUG
 constexpr bool enableValidationLayers = false;
@@ -50,7 +52,6 @@ constexpr bool enableValidationLayers = false;
 constexpr bool enableValidationLayers = true;
 #endif
 
-uint8_t MAXFPS{30U};
 const std::string MODEL_PATH = "data/models/viking_room.obj";
 const std::string TEXTURE_PATH = "data/textures/viking_room.png";
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
@@ -106,50 +107,9 @@ struct UniformBufferObject {
   alignas(16) glm::mat4 proj;
 };
 
-struct UniformTime {
-
-  inline static const auto startTime =
-      std::chrono::high_resolution_clock::now();
-
-  inline static auto past = std::chrono::high_resolution_clock::now();
-
-  float getTime() const {
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    return std::chrono::duration<float>(currentTime - startTime).count();
-  }
-  float getDeltaTime() {
-    auto Current = std::chrono::high_resolution_clock::now();
-    float dt = std::chrono::duration<float>(Current - past).count();
-    past = Current;
-    return dt;
-  }
-};
-
-struct CameraSettings {
-  float yaw{90.0f};
-  float pitch{0.0f};
-  float sensitivity{0.1f};
-  uint8_t wasd = 0;
-  glm::vec3 pos{0.0f, -3.0f, 0.5f};
-  glm::vec3 front{0.0f, 1.0f, 0.0f};
-  glm::vec3 up{0.0f, 0.0f, 1.0f};
-  float cameraSpeed = 1.5f;
-
-  void addRotation(float xoffset, float yoffset) {
-    yaw -= xoffset * sensitivity;
-    pitch -= yoffset * sensitivity;
-    pitch = std::clamp(pitch, -89.0f, 89.0f);
-
-    glm::vec3 direction;
-    direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-    direction.y = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-    direction.z = sin(glm::radians(pitch));
-    front = glm::normalize(direction);
-  }
-};
-
 export class APP {
 public:
+  WisE::luaConfigs luaConfigs;
   void run() {
     initWindow();
     initVulkan();
@@ -160,8 +120,8 @@ public:
 private:
   bool appState{true};
   SDL_Event event{0};
-  UniformTime timer;
-  CameraSettings cam;
+  WisE::UniformTime timer;
+  WisE::CameraSettings camera;
   vk::raii::DescriptorPool imGuiDescriptorPool = nullptr;
   vk::raii::Context context;
   vk::raii::Instance instance = nullptr;
@@ -228,25 +188,6 @@ private:
   std::vector<const char*> requiredDeviceExtension = {
       vk::KHRSwapchainExtensionName};
 
-  void initWindow() {
-    SDL_SetAppMetadata("preview", "0.0.1", "Ys");
-
-    // SDL_Initialization
-    if (!SDL_Init(SDL_INIT_VIDEO)) {
-
-      SDL_Log("Could'nt Initializing SDL: %s", SDL_GetError());
-    }
-
-    // Window
-    window = SDL_CreateWindow("preview", WIDTH, HEIGHT,
-                              SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
-    if (!window) {
-      SDL_Log("Error Creating Window: %s", SDL_GetError());
-    }
-    SDL_Log("SDL Initialized");
-    SDL_SetWindowRelativeMouseMode(window, true);
-  }
-
   void framebufferResizeCallback([[maybe_unused]] int width,
                                  [[maybe_unused]] int height) {
     framebufferResized = true;
@@ -286,7 +227,7 @@ private:
       float deltatime = timer.getDeltaTime();
       std::cout << deltatime << "\n";
       AppEvents();
-      updatePlayerMovement(deltatime);
+      WisE::updatePlayerMovement(deltatime, camera);
       drawFrame(deltatime);
       FPSCalculation();
     }
@@ -294,9 +235,9 @@ private:
   }
 
   void FPSCalculation() {
-    if (MAXFPS > 0) {
+    if (luaConfigs.MaxFPS > 0) {
 
-      float targetFrameRate{1.0f / static_cast<float>(MAXFPS)};
+      float targetFrameRate{1.0f / static_cast<float>(luaConfigs.MaxFPS)};
 
       auto now = std::chrono::high_resolution_clock::now();
       float timeSpent = std::chrono::duration<float>(now - timer.past).count();
@@ -309,21 +250,6 @@ private:
         std::this_thread::sleep_for(sleepDuration);
       }
     }
-  }
-
-  void updatePlayerMovement(float deltaTime) {
-    float velocity = cam.cameraSpeed * deltaTime;
-
-    if (cam.wasd & 8)
-      cam.pos += cam.front * velocity;
-    if (cam.wasd & 2)
-      cam.pos -= cam.front * velocity;
-
-    glm::vec3 right = glm::normalize(glm::cross(cam.front, cam.up));
-    if (cam.wasd & 1)
-      cam.pos += right * velocity;
-    if (cam.wasd & 4)
-      cam.pos -= right * velocity;
   }
 
   void AppEvents() {
@@ -350,49 +276,49 @@ private:
       } break;
       case SDL_EVENT_KEY_DOWN:
         if (event.key.scancode == SDL_SCANCODE_EQUALS) {
-          MAXFPS += 1;
-          if (MAXFPS == 0) {
-            MAXFPS += 1;
+          luaConfigs.MaxFPS += 1;
+          if (luaConfigs.MaxFPS == 0) {
+            luaConfigs.MaxFPS += 1;
           }
         }
         if (event.key.scancode == SDL_SCANCODE_MINUS) {
-          MAXFPS -= 1;
-          if (MAXFPS == 0) {
-            MAXFPS -= 1;
+          luaConfigs.MaxFPS -= 1;
+          if (luaConfigs.MaxFPS == 0) {
+            luaConfigs.MaxFPS -= 1;
           }
         }
         if (event.key.scancode == SDL_SCANCODE_ESCAPE) {
           appState = false;
         }
         if (event.key.scancode == SDL_SCANCODE_D) {
-          cam.wasd |= 1;
+          camera.wasd |= 1;
         }
         if (event.key.scancode == SDL_SCANCODE_A) {
-          cam.wasd |= 4;
+          camera.wasd |= 4;
         }
         if (event.key.scancode == SDL_SCANCODE_W) {
-          cam.wasd |= 8;
+          camera.wasd |= 8;
         }
         if (event.key.scancode == SDL_SCANCODE_S) {
-          cam.wasd |= 2;
+          camera.wasd |= 2;
         }
         break;
       case SDL_EVENT_KEY_UP:
         if (event.key.scancode == SDL_SCANCODE_D) {
-          cam.wasd &= 30;
+          camera.wasd &= 30;
         }
         if (event.key.scancode == SDL_SCANCODE_A) {
-          cam.wasd &= 27;
+          camera.wasd &= 27;
         }
         if (event.key.scancode == SDL_SCANCODE_W) {
-          cam.wasd &= 23;
+          camera.wasd &= 23;
         }
         if (event.key.scancode == SDL_SCANCODE_S) {
-          cam.wasd &= 29;
+          camera.wasd &= 29;
         }
         break;
       case SDL_EVENT_MOUSE_MOTION:
-        cam.addRotation(event.motion.xrel, event.motion.yrel);
+        camera.addRotation(event.motion.xrel, event.motion.yrel);
         break;
       }
     }
@@ -1305,8 +1231,9 @@ private:
 
     uint8_t minFPS = 1, maxFPS = 240;
 
-    ImGui::SliderScalar("Max FPS Limit ( - , + )", ImGuiDataType_U8, &MAXFPS,
-                        &minFPS, &maxFPS, "%u", ImGuiSliderFlags_AlwaysClamp);
+    ImGui::SliderScalar("Max FPS Limit ( - , + )", ImGuiDataType_U8,
+                        &luaConfigs.MaxFPS, &minFPS, &maxFPS, "%u",
+                        ImGuiSliderFlags_AlwaysClamp);
     ImGui::PopItemWidth();
     ImGui::End();
 
@@ -1390,7 +1317,7 @@ private:
     UniformBufferObject ubo{};
     ubo.model = rotate(glm::mat4(1.0f), glm::radians(-90.0f),
                        glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.view = glm::lookAt(cam.pos, cam.pos + cam.front, cam.up);
+    ubo.view = glm::lookAt(camera.pos, camera.pos + camera.front, camera.up);
     ubo.proj = glm::perspective(glm::radians(45.0f),
                                 static_cast<float>(swapChainExtent.width) /
                                     static_cast<float>(swapChainExtent.height),
@@ -1789,10 +1716,3 @@ private:
     return buffer;
   }
 };
-
-export void loadLuaConfigs() {
-  sol::state lua;
-  lua.open_libraries(sol::lib::base);
-  lua.script_file("lua/config.lua");
-  MAXFPS = lua["SetMaxFPS"].get<uint8_t>();
-}
