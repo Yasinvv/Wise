@@ -4,7 +4,7 @@ build :
 ```zsh
 git clone https://github.com/Yasinvv/Wise.git
 cd wise
-cmake -B build && cmake --build build
+cmake -B build -G Ninja && cmake --build build
 ```
 
 ## DEMO
