@@ -59,7 +59,7 @@ constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 const std::vector<char const*> validationLayers = {
     "VK_LAYER_KHRONOS_validation"};
 
-struct Vertex {
+export struct Vertex {
   glm::vec3 pos;
   glm::vec3 color;
   glm::vec2 texCoord;
@@ -92,7 +92,7 @@ struct Vertex {
   }
 };
 
-template <> struct std::hash<Vertex> {
+export template <> struct std::hash<Vertex> {
   size_t operator()(Vertex const& vertex) const noexcept {
     return ((hash<glm::vec3>()(vertex.pos) ^
              (hash<glm::vec3>()(vertex.color) << 1)) >>
