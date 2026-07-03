@@ -1,17 +1,6 @@
-#include <algorithm>
-#include <array>
 #include <assert.h>
-#include <chrono>
-#include <cstdint>
 #include <cstdlib>
-#include <cstring>
-#include <fstream>
 #include <iostream>
-#include <limits>
-#include <sol/sol.hpp>
-#include <stdexcept>
-#include <thread>
-#include <vector>
 
 import renderer;
 import engine;
