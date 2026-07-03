@@ -1,23 +1,21 @@
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.28)
+
 project(VulkanSDL3App LANGUAGES CXX)
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(Vulkan REQUIRED)
-
 find_package(SDL3 REQUIRED)
 find_package(SDL3_image REQUIRED)
-
 find_package(Lua REQUIRED)
 find_package(sol2 REQUIRED)
 
-set(SRC_FILES
-    source/main.cpp
-)
-
 set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tools/imgui)
+
 set(IMGUI_FILES
     ${IMGUI_DIR}/imgui.cpp
     ${IMGUI_DIR}/imgui_draw.cpp
@@ -27,9 +25,21 @@ set(IMGUI_FILES
     ${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp
     ${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp
 )
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_executable(prog ${SRC_FILES} ${IMGUI_FILES})
+add_executable(prog)
+target_sources(prog
+    PRIVATE
+        source/main.cpp
+        source/headers.cpp
+        ${IMGUI_FILES}
+)
+
+target_sources(prog
+    PRIVATE
+        FILE_SET CXX_MODULES FILES
+        source/modules/renderer.cppm
+        source/modules/engine.cppm
+)
 
 target_include_directories(prog PRIVATE
     /usr/local/include
@@ -38,25 +48,23 @@ target_include_directories(prog PRIVATE
     ${IMGUI_DIR}/backends
     ${LUA_INCLUDE_DIR}
 )
-add_custom_target(copy_assets ALL
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_CURRENT_SOURCE_DIR}/data
-    ${CMAKE_CURRENT_BINARY_DIR}/data
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_CURRENT_SOURCE_DIR}/lua
-    ${CMAKE_CURRENT_BINARY_DIR}/lua
 
-    COMMENT "Copying assets to build directory..."
-  )
-add_dependencies(prog copy_assets)
-
-target_compile_definitions(prog PRIVATE VULKAN_HPP_NO_STRUCT_CONSTRUCTORS)
+target_compile_definitions(prog PRIVATE
+    VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
+    GLM_FORCE_RADIANS
+    GLM_FORCE_DEPTH_ZERO_TO_ONE
+    GLM_ENABLE_EXPERIMENTAL
+)
 
 if(MSVC)
   target_compile_options(prog PRIVATE /W4)
 else()
   target_compile_options(prog PRIVATE -Wall -Wextra)
 endif()
+
+target_compile_options(prog PRIVATE
+    $<$<CXX_COMPILER_ID:GNU>:-fmodules-ts>
+)
 
 target_link_libraries(prog PRIVATE
     Vulkan::Vulkan
@@ -66,10 +74,14 @@ target_link_libraries(prog PRIVATE
     sol2::sol2
 )
 
+add_custom_target(copy_assets ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/data
+        ${CMAKE_CURRENT_BINARY_DIR}/data
 
-if(UNIX AND NOT APPLE)
-  set_target_properties(prog PROPERTIES
-        INSTALL_RPATH "/usr/local/lib64;${Vulkan_LIBRARY_DIRS}"
-        BUILD_WITH_INSTALL_RPATH TRUE
-    )
-endif()
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/lua
+        ${CMAKE_CURRENT_BINARY_DIR}/lua
+)
+
+add_dependencies(prog copy_assets)
