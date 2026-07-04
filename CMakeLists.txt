@@ -49,8 +49,9 @@ target_sources(prog
         source/modules/vertex.cppm
         source/modules/pipeline.cppm
         source/modules/context.cppm
-
-
+        source/modules/instance.cppm
+        source/modules/vk_debug.cppm
+        source/modules/surface.cppm
 )
 
 target_include_directories(prog PRIVATE

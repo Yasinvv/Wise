@@ -7,6 +7,10 @@ export module context;
 
 namespace WisE {
 
+export struct Configs {
+  uint8_t MaxFPS{30U};
+};
+
 export struct VK_CTX {
   vk::raii::DescriptorPool imGuiDescriptorPool{nullptr};
   vk::raii::Context context;
@@ -44,6 +48,8 @@ export struct VK_CTX {
 
   vk::raii::DescriptorPool descriptorPool{nullptr};
   std::vector<vk::raii::DescriptorSet> descriptorSets;
+  // vk::raii::PipelineLayout pipelineLayout{nullptr};
+  // vk::raii::Pipeline graphicsPipeline{nullptr};
 
   vk::raii::CommandPool commandPool{nullptr};
   std::vector<vk::raii::CommandBuffer> commandBuffers;

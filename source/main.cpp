@@ -8,7 +8,7 @@ import luaConfigs;
 int main() {
   try {
     APP app;
-    WisE::loadLuaConfigs(app.luaConfigs);
+    WisE::loadLuaConfigs(app.configs);
     app.run();
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;

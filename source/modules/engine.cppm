@@ -46,6 +46,9 @@ import camera;
 import luaConfigs;
 import physicalDevice;
 import extra;
+import instance;
+import vk_debug;
+import surface;
 import context;
 import pipeline;
 
@@ -112,9 +115,10 @@ struct UniformBufferObject {
 
 export class APP {
 public:
-  WisE::luaConfigs luaConfigs;
+  WisE::Configs configs;
   void run() {
-    initWindow();
+    n0_window.initWindow();
+    n1_window.initWindow();
     initVulkan();
     mainLoop();
     cleanup();
@@ -126,8 +130,13 @@ private:
   WisE::VK_CTX ctx;
   WisE::UniformTime timer;
   WisE::Camera camera;
+  WisE::Window n0_window;
+  WisE::Window n1_window;
+  WisE::Instance n0_instance;
+  WisE::VK_Debug n0_debugMessenger;
+  WisE::Surface n0_surface;
+  WisE::PhysicalDevice n0_physicalDevice;
   // WisE::Pipeline n0_pipeline;
-  // WisE::PhysicalDevice n0_physicalDevice;
 
   vk::raii::DescriptorPool imGuiDescriptorPool{nullptr};
   vk::raii::Context context;
@@ -193,10 +202,17 @@ private:
 
   void initVulkan() {
     createInstance();
+    n0_instance.createInstance(ctx);
+    std::cout << "n0_instance OK" << "\n";
     setupDebugMessenger();
+    n0_debugMessenger.setupDebugMessenger(ctx);
+    std::cout << "n0_debugMessenger OK" << "\n";
     createSurface();
+    n0_surface.createSurface(n1_window, ctx);
+    std::cout << "n0_surface OK" << "\n";
     pickPhysicalDevice();
-    // n0_physicalDevice.pickPhysicalDevice(ctx);
+    n0_physicalDevice.pickPhysicalDevice(ctx);
+    std::cout << "n0_physicalDevice OK" << "\n";
     createLogicalDevice();
     createSwapChain();
     createImageViews();
@@ -225,7 +241,7 @@ private:
   void mainLoop() {
     while (appState) {
       float deltatime = timer.getDeltaTime();
-      std::cout << deltatime << "\n";
+      // std::cout << deltatime << "\n";
       AppEvents();
       camera.updatePlayerMovement(deltatime);
       drawFrame(deltatime);
@@ -235,9 +251,9 @@ private:
   }
 
   void FPSCalculation() {
-    if (luaConfigs.MaxFPS > 0) {
+    if (configs.MaxFPS > 0) {
 
-      float targetFrameRate{1.0f / static_cast<float>(luaConfigs.MaxFPS)};
+      float targetFrameRate{1.0f / static_cast<float>(configs.MaxFPS)};
 
       auto now = std::chrono::high_resolution_clock::now();
       float timeSpent = std::chrono::duration<float>(now - timer.past).count();
@@ -276,15 +292,15 @@ private:
       } break;
       case SDL_EVENT_KEY_DOWN:
         if (event.key.scancode == SDL_SCANCODE_EQUALS) {
-          luaConfigs.MaxFPS += 1;
-          if (luaConfigs.MaxFPS == 0) {
-            luaConfigs.MaxFPS += 1;
+          configs.MaxFPS += 1;
+          if (configs.MaxFPS == 0) {
+            configs.MaxFPS += 1;
           }
         }
         if (event.key.scancode == SDL_SCANCODE_MINUS) {
-          luaConfigs.MaxFPS -= 1;
-          if (luaConfigs.MaxFPS == 0) {
-            luaConfigs.MaxFPS -= 1;
+          configs.MaxFPS -= 1;
+          if (configs.MaxFPS == 0) {
+            configs.MaxFPS -= 1;
           }
         }
         if (event.key.scancode == SDL_SCANCODE_ESCAPE) {
@@ -333,16 +349,16 @@ private:
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
-    SDL_DestroyWindow(window);
+    SDL_DestroyWindow(n0_window.window);
     SDL_Quit();
   }
 
   void recreateSwapChain() {
     int width = 0, height = 0;
-    SDL_GetWindowSizeInPixels(window, &width, &height);
+    SDL_GetWindowSizeInPixels(n0_window.window, &width, &height);
     while (width == 0 || height == 0) {
       SDL_WaitEvent(&event);
-      SDL_GetWindowSizeInPixels(window, &width, &height);
+      SDL_GetWindowSizeInPixels(n0_window.window, &width, &height);
     }
   }
 
@@ -427,7 +443,8 @@ private:
 
   void createSurface() {
     VkSurfaceKHR _surface;
-    if (!SDL_Vulkan_CreateSurface(window, *instance, nullptr, &_surface)) {
+    if (!SDL_Vulkan_CreateSurface(n0_window.window, *instance, nullptr,
+                                  &_surface)) {
       throw std::runtime_error("failed to create window surface!");
     }
     surface = vk::raii::SurfaceKHR(instance, _surface);
@@ -1175,7 +1192,7 @@ private:
     uint8_t minFPS = 1, maxFPS = 240;
 
     ImGui::SliderScalar("Max FPS Limit ( - , + )", ImGuiDataType_U8,
-                        &luaConfigs.MaxFPS, &minFPS, &maxFPS, "%u",
+                        &configs.MaxFPS, &minFPS, &maxFPS, "%u",
                         ImGuiSliderFlags_AlwaysClamp);
     ImGui::PopItemWidth();
     ImGui::End();
@@ -1393,7 +1410,7 @@ private:
       return capabilities.currentExtent;
     }
     int width, height;
-    SDL_GetWindowSizeInPixels(window, &width, &height);
+    SDL_GetWindowSizeInPixels(n0_window.window, &width, &height);
 
     return {std::clamp<uint32_t>(width, capabilities.minImageExtent.width,
                                  capabilities.maxImageExtent.width),
@@ -1589,7 +1606,7 @@ private:
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
 
-    ImGui_ImplSDL3_InitForVulkan(window);
+    ImGui_ImplSDL3_InitForVulkan(n0_window.window);
 
     ImGui_ImplVulkan_InitInfo initInfo = {};
     initInfo.Instance = *instance;
