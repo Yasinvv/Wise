@@ -8,41 +8,46 @@ module;
 export module camera;
 namespace WisE {
 
-export struct CameraSettings {
-  float yaw{90.0f};
-  float pitch{0.0f};
-  float sensitivity{0.1f};
-  uint8_t wasd = 0;
-  glm::vec3 pos{0.0f, -3.0f, 0.5f};
-  glm::vec3 front{0.0f, 1.0f, 0.0f};
-  glm::vec3 up{0.0f, 0.0f, 1.0f};
-  float cameraSpeed = 1.5f;
+export class Camera {
+private:
+public:
+  struct Settings {
+    float yaw{90.0f};
+    float pitch{0.0f};
+    float sensitivity{0.1f};
+    uint8_t wasd = 0;
+    glm::vec3 pos{0.0f, -3.0f, 0.5f};
+    glm::vec3 front{0.0f, 1.0f, 0.0f};
+    glm::vec3 up{0.0f, 0.0f, 1.0f};
+    float cameraSpeed = 1.5f;
 
-  void addRotation(float xoffset, float yoffset) {
-    yaw -= xoffset * sensitivity;
-    pitch -= yoffset * sensitivity;
-    pitch = std::clamp(pitch, -89.0f, 89.0f);
+    void addRotation(float xoffset, float yoffset) {
+      yaw -= xoffset * sensitivity;
+      pitch -= yoffset * sensitivity;
+      pitch = std::clamp(pitch, -89.0f, 89.0f);
 
-    glm::vec3 direction;
-    direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-    direction.y = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-    direction.z = sin(glm::radians(pitch));
-    front = glm::normalize(direction);
+      glm::vec3 direction;
+      direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+      direction.y = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+      direction.z = sin(glm::radians(pitch));
+      front = glm::normalize(direction);
+    }
+  };
+  Settings settings;
+
+  void updatePlayerMovement(float& deltaTime) {
+    float velocity = settings.cameraSpeed * deltaTime;
+
+    if (settings.wasd & 8)
+      settings.pos += settings.front * velocity;
+    if (settings.wasd & 2)
+      settings.pos -= settings.front * velocity;
+
+    glm::vec3 right = glm::normalize(glm::cross(settings.front, settings.up));
+    if (settings.wasd & 1)
+      settings.pos += right * velocity;
+    if (settings.wasd & 4)
+      settings.pos -= right * velocity;
   }
 };
-
-export void updatePlayerMovement(float& deltaTime, CameraSettings& cam) {
-  float velocity = cam.cameraSpeed * deltaTime;
-
-  if (cam.wasd & 8)
-    cam.pos += cam.front * velocity;
-  if (cam.wasd & 2)
-    cam.pos -= cam.front * velocity;
-
-  glm::vec3 right = glm::normalize(glm::cross(cam.front, cam.up));
-  if (cam.wasd & 1)
-    cam.pos += right * velocity;
-  if (cam.wasd & 4)
-    cam.pos -= right * velocity;
-}
 } // namespace WisE

@@ -47,6 +47,7 @@ import luaConfigs;
 import physicalDevice;
 import extra;
 import context;
+import pipeline;
 
 #ifdef NDEBUG
 constexpr bool enableValidationLayers = false;
@@ -122,51 +123,55 @@ public:
 private:
   bool appState{true};
   SDL_Event event{0};
+  WisE::VK_CTX ctx;
   WisE::UniformTime timer;
-  WisE::CameraSettings camera;
-  vk::raii::DescriptorPool imGuiDescriptorPool = nullptr;
+  WisE::Camera camera;
+  // WisE::Pipeline n0_pipeline;
+  // WisE::PhysicalDevice n0_physicalDevice;
+
+  vk::raii::DescriptorPool imGuiDescriptorPool{nullptr};
   vk::raii::Context context;
-  vk::raii::Instance instance = nullptr;
-  vk::raii::DebugUtilsMessengerEXT debugMessenger = nullptr;
-  vk::raii::SurfaceKHR surface = nullptr;
-  vk::raii::PhysicalDevice physicalDevice = nullptr;
-  vk::raii::Device device = nullptr;
+  vk::raii::Instance instance{nullptr};
+  vk::raii::DebugUtilsMessengerEXT debugMessenger{nullptr};
+  vk::raii::SurfaceKHR surface{nullptr};
+  vk::raii::PhysicalDevice physicalDevice{nullptr};
+  vk::raii::Device device{nullptr};
   uint32_t queueIndex = ~0;
-  vk::raii::Queue queue = nullptr;
-  vk::raii::SwapchainKHR swapChain = nullptr;
+  vk::raii::Queue queue{nullptr};
+  vk::raii::SwapchainKHR swapChain{nullptr};
   std::vector<vk::Image> swapChainImages;
   vk::SurfaceFormatKHR swapChainSurfaceFormat;
   vk::Extent2D swapChainExtent;
   std::vector<vk::raii::ImageView> swapChainImageViews;
 
-  vk::raii::DescriptorSetLayout descriptorSetLayout = nullptr;
-  vk::raii::PipelineLayout pipelineLayout = nullptr;
-  vk::raii::Pipeline graphicsPipeline = nullptr;
+  vk::raii::DescriptorSetLayout descriptorSetLayout{nullptr};
+  vk::raii::PipelineLayout pipelineLayout{nullptr};
+  vk::raii::Pipeline graphicsPipeline{nullptr};
 
-  vk::raii::Image depthImage = nullptr;
-  vk::raii::DeviceMemory depthImageMemory = nullptr;
-  vk::raii::ImageView depthImageView = nullptr;
+  vk::raii::Image depthImage{nullptr};
+  vk::raii::DeviceMemory depthImageMemory{nullptr};
+  vk::raii::ImageView depthImageView{nullptr};
 
-  vk::raii::Image textureImage = nullptr;
-  vk::raii::DeviceMemory textureImageMemory = nullptr;
-  vk::raii::ImageView textureImageView = nullptr;
-  vk::raii::Sampler textureSampler = nullptr;
+  vk::raii::Image textureImage{nullptr};
+  vk::raii::DeviceMemory textureImageMemory{nullptr};
+  vk::raii::ImageView textureImageView{nullptr};
+  vk::raii::Sampler textureSampler{nullptr};
 
   std::vector<Vertex> vertices;
   std::vector<uint32_t> indices;
-  vk::raii::Buffer vertexBuffer = nullptr;
-  vk::raii::DeviceMemory vertexBufferMemory = nullptr;
-  vk::raii::Buffer indexBuffer = nullptr;
-  vk::raii::DeviceMemory indexBufferMemory = nullptr;
+  vk::raii::Buffer vertexBuffer{nullptr};
+  vk::raii::DeviceMemory vertexBufferMemory{nullptr};
+  vk::raii::Buffer indexBuffer{nullptr};
+  vk::raii::DeviceMemory indexBufferMemory{nullptr};
 
   std::vector<vk::raii::Buffer> uniformBuffers;
   std::vector<vk::raii::DeviceMemory> uniformBuffersMemory;
   std::vector<void*> uniformBuffersMapped;
 
-  vk::raii::DescriptorPool descriptorPool = nullptr;
+  vk::raii::DescriptorPool descriptorPool{nullptr};
   std::vector<vk::raii::DescriptorSet> descriptorSets;
 
-  vk::raii::CommandPool commandPool = nullptr;
+  vk::raii::CommandPool commandPool{nullptr};
   std::vector<vk::raii::CommandBuffer> commandBuffers;
 
   std::vector<vk::raii::Semaphore> presentCompleteSemaphores;
@@ -190,11 +195,13 @@ private:
     createInstance();
     setupDebugMessenger();
     createSurface();
-    WisE::pickPhysicalDevice(instance, physicalDevice, requiredDeviceExtension);
+    pickPhysicalDevice();
+    // n0_physicalDevice.pickPhysicalDevice(ctx);
     createLogicalDevice();
     createSwapChain();
     createImageViews();
     createDescriptorSetLayout();
+    // n0_pipeline.createGraphicsPipeline(ctx);
     createGraphicsPipeline();
     createCommandPool();
     createDepthResources();
@@ -220,7 +227,7 @@ private:
       float deltatime = timer.getDeltaTime();
       std::cout << deltatime << "\n";
       AppEvents();
-      WisE::updatePlayerMovement(deltatime, camera);
+      camera.updatePlayerMovement(deltatime);
       drawFrame(deltatime);
       FPSCalculation();
     }
@@ -284,34 +291,34 @@ private:
           appState = false;
         }
         if (event.key.scancode == SDL_SCANCODE_D) {
-          camera.wasd |= 1;
+          camera.settings.wasd |= 1;
         }
         if (event.key.scancode == SDL_SCANCODE_A) {
-          camera.wasd |= 4;
+          camera.settings.wasd |= 4;
         }
         if (event.key.scancode == SDL_SCANCODE_W) {
-          camera.wasd |= 8;
+          camera.settings.wasd |= 8;
         }
         if (event.key.scancode == SDL_SCANCODE_S) {
-          camera.wasd |= 2;
+          camera.settings.wasd |= 2;
         }
         break;
       case SDL_EVENT_KEY_UP:
         if (event.key.scancode == SDL_SCANCODE_D) {
-          camera.wasd &= 30;
+          camera.settings.wasd &= 30;
         }
         if (event.key.scancode == SDL_SCANCODE_A) {
-          camera.wasd &= 27;
+          camera.settings.wasd &= 27;
         }
         if (event.key.scancode == SDL_SCANCODE_W) {
-          camera.wasd &= 23;
+          camera.settings.wasd &= 23;
         }
         if (event.key.scancode == SDL_SCANCODE_S) {
-          camera.wasd &= 29;
+          camera.settings.wasd &= 29;
         }
         break;
       case SDL_EVENT_MOUSE_MOTION:
-        camera.addRotation(event.motion.xrel, event.motion.yrel);
+        camera.settings.addRotation(event.motion.xrel, event.motion.yrel);
         break;
       }
     }
@@ -1253,7 +1260,9 @@ private:
     UniformBufferObject ubo{};
     ubo.model = rotate(glm::mat4(1.0f), glm::radians(-90.0f),
                        glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.view = glm::lookAt(camera.pos, camera.pos + camera.front, camera.up);
+    ubo.view = glm::lookAt(camera.settings.pos,
+                           camera.settings.pos + camera.settings.front,
+                           camera.settings.up);
     ubo.proj = glm::perspective(glm::radians(45.0f),
                                 static_cast<float>(swapChainExtent.width) /
                                     static_cast<float>(swapChainExtent.height),
@@ -1611,6 +1620,62 @@ private:
     initInfo.ApiVersion = VK_API_VERSION_1_3;
 
     ImGui_ImplVulkan_Init(&initInfo);
+  }
+  bool isDeviceSuitable(vk::raii::PhysicalDevice const& physicalDevice) {
+    // Check if the physicalDevice supports the Vulkan 1.3 API version
+    bool supportsVulkan1_3 =
+        physicalDevice.getProperties().apiVersion >= VK_API_VERSION_1_3;
+
+    // Check if any of the queue families support graphics operations
+    auto queueFamilies = physicalDevice.getQueueFamilyProperties();
+    bool supportsGraphics =
+        std::ranges::any_of(queueFamilies, [](auto const& qfp) {
+          return !!(qfp.queueFlags & vk::QueueFlagBits::eGraphics);
+        });
+
+    // Check if all required physicalDevice extensions are available
+    auto availableDeviceExtensions =
+        physicalDevice.enumerateDeviceExtensionProperties();
+    bool supportsAllRequiredExtensions = std::ranges::all_of(
+        requiredDeviceExtension,
+        [&availableDeviceExtensions](auto const& requiredDeviceExtension) {
+          return std::ranges::any_of(
+              availableDeviceExtensions,
+              [requiredDeviceExtension](auto const& availableDeviceExtension) {
+                return strcmp(availableDeviceExtension.extensionName,
+                              requiredDeviceExtension) == 0;
+              });
+        });
+
+    // Check if the physicalDevice supports the required features
+    auto features = physicalDevice.template getFeatures2<
+        vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan13Features,
+        vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>();
+    bool supportsRequiredFeatures =
+        features.template get<vk::PhysicalDeviceFeatures2>()
+            .features.samplerAnisotropy &&
+        features.template get<vk::PhysicalDeviceVulkan13Features>()
+            .dynamicRendering &&
+        features
+            .template get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>()
+            .extendedDynamicState;
+
+    // Return true if the physicalDevice meets all the criteria
+    return supportsVulkan1_3 && supportsGraphics &&
+           supportsAllRequiredExtensions && supportsRequiredFeatures;
+  }
+
+  void pickPhysicalDevice() {
+    std::vector<vk::raii::PhysicalDevice> physicalDevices =
+        instance.enumeratePhysicalDevices();
+    auto const devIter =
+        std::ranges::find_if(physicalDevices, [&](auto const& physicalDevice) {
+          return isDeviceSuitable(physicalDevice);
+        });
+    if (devIter == physicalDevices.end()) {
+      throw std::runtime_error("failed to find a suitable GPU!");
+    }
+    physicalDevice = *devIter;
   }
 
   [[nodiscard]] std::vector<const char*> getRequiredInstanceExtensions() {
