@@ -18,7 +18,6 @@ module;
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <fstream>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -45,6 +44,9 @@ import window;
 import time;
 import camera;
 import luaConfigs;
+import physicalDevice;
+import extra;
+import context;
 
 #ifdef NDEBUG
 constexpr bool enableValidationLayers = false;
@@ -59,7 +61,7 @@ constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 const std::vector<char const*> validationLayers = {
     "VK_LAYER_KHRONOS_validation"};
 
-export struct Vertex {
+struct Vertex {
   glm::vec3 pos;
   glm::vec3 color;
   glm::vec2 texCoord;
@@ -92,7 +94,7 @@ export struct Vertex {
   }
 };
 
-export template <> struct std::hash<Vertex> {
+template <> struct std::hash<Vertex> {
   size_t operator()(Vertex const& vertex) const noexcept {
     return ((hash<glm::vec3>()(vertex.pos) ^
              (hash<glm::vec3>()(vertex.color) << 1)) >>
@@ -174,16 +176,7 @@ private:
 
   bool framebufferResized = false;
 
-  struct InfiniteGrid {
-    vk::raii::PipelineLayout pipelineLayout = nullptr;
-    vk::raii::Pipeline graphicsPipeline = nullptr;
-
-    vk::raii::Buffer vertexBuffer = nullptr;
-    vk::raii::DeviceMemory vertexBufferMemory = nullptr;
-    vk::raii::Buffer indexBuffer = nullptr;
-    vk::raii::DeviceMemory indexBufferMemory = nullptr;
-    uint32_t indexCount{0};
-  } m_infiniteGrid;
+  WisE::InfiniteGrid m_infiniteGrid;
 
   std::vector<const char*> requiredDeviceExtension = {
       vk::KHRSwapchainExtensionName};
@@ -197,7 +190,7 @@ private:
     createInstance();
     setupDebugMessenger();
     createSurface();
-    pickPhysicalDevice();
+    WisE::pickPhysicalDevice(instance, physicalDevice, requiredDeviceExtension);
     createLogicalDevice();
     createSwapChain();
     createImageViews();
@@ -433,63 +426,6 @@ private:
     surface = vk::raii::SurfaceKHR(instance, _surface);
   }
 
-  bool isDeviceSuitable(vk::raii::PhysicalDevice const& physicalDevice) {
-    // Check if the physicalDevice supports the Vulkan 1.3 API version
-    bool supportsVulkan1_3 =
-        physicalDevice.getProperties().apiVersion >= VK_API_VERSION_1_3;
-
-    // Check if any of the queue families support graphics operations
-    auto queueFamilies = physicalDevice.getQueueFamilyProperties();
-    bool supportsGraphics =
-        std::ranges::any_of(queueFamilies, [](auto const& qfp) {
-          return !!(qfp.queueFlags & vk::QueueFlagBits::eGraphics);
-        });
-
-    // Check if all required physicalDevice extensions are available
-    auto availableDeviceExtensions =
-        physicalDevice.enumerateDeviceExtensionProperties();
-    bool supportsAllRequiredExtensions = std::ranges::all_of(
-        requiredDeviceExtension,
-        [&availableDeviceExtensions](auto const& requiredDeviceExtension) {
-          return std::ranges::any_of(
-              availableDeviceExtensions,
-              [requiredDeviceExtension](auto const& availableDeviceExtension) {
-                return strcmp(availableDeviceExtension.extensionName,
-                              requiredDeviceExtension) == 0;
-              });
-        });
-
-    // Check if the physicalDevice supports the required features
-    auto features = physicalDevice.template getFeatures2<
-        vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan13Features,
-        vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>();
-    bool supportsRequiredFeatures =
-        features.template get<vk::PhysicalDeviceFeatures2>()
-            .features.samplerAnisotropy &&
-        features.template get<vk::PhysicalDeviceVulkan13Features>()
-            .dynamicRendering &&
-        features
-            .template get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>()
-            .extendedDynamicState;
-
-    // Return true if the physicalDevice meets all the criteria
-    return supportsVulkan1_3 && supportsGraphics &&
-           supportsAllRequiredExtensions && supportsRequiredFeatures;
-  }
-
-  void pickPhysicalDevice() {
-    std::vector<vk::raii::PhysicalDevice> physicalDevices =
-        instance.enumeratePhysicalDevices();
-    auto const devIter =
-        std::ranges::find_if(physicalDevices, [&](auto const& physicalDevice) {
-          return isDeviceSuitable(physicalDevice);
-        });
-    if (devIter == physicalDevices.end()) {
-      throw std::runtime_error("failed to find a suitable GPU!");
-    }
-    physicalDevice = *devIter;
-  }
-
   void createLogicalDevice() {
     std::vector<vk::QueueFamilyProperties> queueFamilyProperties =
         physicalDevice.getQueueFamilyProperties();
@@ -605,7 +541,7 @@ private:
 
   void createGraphicsPipeline() {
     vk::raii::ShaderModule shaderModule =
-        createShaderModule(readFile("data/shaders/slang.spv"));
+        createShaderModule(WisE::readFile("data/shaders/slang.spv"));
 
     vk::PipelineShaderStageCreateInfo vertShaderStageInfo{
         .stage = vk::ShaderStageFlagBits::eVertex,
@@ -1514,7 +1450,7 @@ private:
   }
 
   void createGridPipeline() {
-    auto shaderCode = readFile("data/shaders/grid.spv");
+    auto shaderCode = WisE::readFile("data/shaders/grid.spv");
     vk::raii::ShaderModule shaderModule = createShaderModule(shaderCode);
 
     vk::PipelineShaderStageCreateInfo vertShaderStageInfo{
@@ -1702,17 +1638,5 @@ private:
     }
 
     return vk::False;
-  }
-
-  static std::vector<char> readFile(const std::string& filename) {
-    std::ifstream file(filename, std::ios::ate | std::ios::binary);
-    if (!file.is_open()) {
-      throw std::runtime_error("failed to open file!");
-    }
-    std::vector<char> buffer(file.tellg());
-    file.seekg(0, std::ios::beg);
-    file.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
-    file.close();
-    return buffer;
   }
 };

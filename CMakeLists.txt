@@ -44,6 +44,12 @@ target_sources(prog
         source/modules/time.cppm
         source/modules/camera.cppm
         source/modules/luaConfigs.cppm
+        source/modules/physicalDevice.cppm
+        source/modules/extra.cppm
+        source/modules/vertex.cppm
+        source/modules/pipeline.cppm
+        source/modules/context.cppm
+
 
 )
 
