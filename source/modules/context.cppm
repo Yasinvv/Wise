@@ -1,6 +1,5 @@
 module;
 
-#include <vector>
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_raii.hpp>
 
@@ -8,13 +7,13 @@ export module context;
 
 namespace WisE {
 
-export struct vulkan_cntx {
-  vk::raii::Device device;
-  vk::raii::PhysicalDevice& physicalDevice;
-  vk::raii::DescriptorSetLayout& descriptorSetLayout;
-  vk::SurfaceFormatKHR& swapChainSurfaceFormat;
-  vk::raii::Pipeline& graphicsPipeline;
-  vk::raii::PipelineLayout& pipelineLayout;
+export struct VK_CTX {
+  vk::raii::Context context;
+  vk::raii::Instance instance = nullptr;
+  vk::raii::DebugUtilsMessengerEXT debugMessenger = nullptr;
+  vk::raii::SurfaceKHR surface = nullptr;
+  vk::raii::PhysicalDevice physicalDevice = nullptr;
+  vk::raii::Device device = nullptr;
 };
 
 export struct InfiniteGrid {
@@ -27,5 +26,4 @@ export struct InfiniteGrid {
   vk::raii::DeviceMemory indexBufferMemory = nullptr;
   uint32_t indexCount{0};
 };
-
 } // namespace WisE
