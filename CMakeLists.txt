@@ -52,6 +52,14 @@ target_sources(prog
         source/modules/instance.cppm
         source/modules/vk_debug.cppm
         source/modules/surface.cppm
+        source/modules/logicalDevice.cppm
+        source/modules/swapchain.cppm
+        source/modules/imageViews.cppm
+        source/modules/descriptor.cppm
+        source/modules/commandPool.cppm
+        source/modules/depthResource.cppm
+        source/modules/textureImage.cppm
+        source/modules/commandBuffer.cppm
 )
 
 target_include_directories(prog PRIVATE

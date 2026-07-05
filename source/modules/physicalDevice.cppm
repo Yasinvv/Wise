@@ -2,7 +2,6 @@ module;
 
 #include <algorithm>
 #include <cstring>
-#include <vector>
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_raii.hpp>
 

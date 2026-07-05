@@ -49,6 +49,16 @@ import extra;
 import instance;
 import vk_debug;
 import surface;
+import logicalDevice;
+import swapchain;
+import imageViews;
+import descriptor;
+import commandPool;
+import depthResource;
+import commandBuffer;
+
+import textureImage;
+
 import context;
 import pipeline;
 
@@ -117,8 +127,12 @@ export class APP {
 public:
   WisE::Configs configs;
   void run() {
-    n0_window.initWindow();
-    n1_window.initWindow();
+    WisE::Window::WindowSettings n0_ws{
+        .appname = "YS", .appversion = "0.0.1", .appID = "0"};
+    WisE::Window::WindowSettings n1_ws{
+        .appname = "WisE", .appversion = "0.0.1", .appID = "1"};
+    n0_window.initWindow(n0_ws);
+    n1_window.initWindow(n1_ws);
     initVulkan();
     mainLoop();
     cleanup();
@@ -128,6 +142,7 @@ private:
   bool appState{true};
   SDL_Event event{0};
   WisE::VK_CTX ctx;
+  WisE::Path path;
   WisE::UniformTime timer;
   WisE::Camera camera;
   WisE::Window n0_window;
@@ -136,8 +151,15 @@ private:
   WisE::VK_Debug n0_debugMessenger;
   WisE::Surface n0_surface;
   WisE::PhysicalDevice n0_physicalDevice;
-  // WisE::Pipeline n0_pipeline;
-
+  WisE::LogicalDevice n0_logicalDevice;
+  WisE::Swapchain n0_swapchain;
+  WisE::ImageViews n0_imageViews;
+  WisE::Pipeline n0_pipeline;
+  WisE::Descriptor n0_descriptor;
+  WisE::CommandPool n0_commandPool;
+  WisE::DepthResource n0_depthResource;
+  WisE::CommandBuffer n0_commandBuffer;
+  WisE::TextureImage n0_textureImage;
   vk::raii::DescriptorPool imGuiDescriptorPool{nullptr};
   vk::raii::Context context;
   vk::raii::Instance instance{nullptr};
@@ -201,27 +223,57 @@ private:
   }
 
   void initVulkan() {
+    path.MODEL_PATH = "data/models/viking_room.obj";
+    path.TEXTURE_PATH = "data/textures/viking_room.png";
+
     createInstance();
     n0_instance.createInstance(ctx);
     std::cout << "n0_instance OK" << "\n";
+
     setupDebugMessenger();
     n0_debugMessenger.setupDebugMessenger(ctx);
     std::cout << "n0_debugMessenger OK" << "\n";
+
     createSurface();
     n0_surface.createSurface(n1_window, ctx);
     std::cout << "n0_surface OK" << "\n";
+
     pickPhysicalDevice();
     n0_physicalDevice.pickPhysicalDevice(ctx);
     std::cout << "n0_physicalDevice OK" << "\n";
+
     createLogicalDevice();
+    n0_logicalDevice.createLogicalDevice(ctx);
+    std::cout << "n0_logicalDevice OK" << "\n";
+
     createSwapChain();
+    n0_swapchain.createSwapChain(ctx, n1_window);
+    std::cout << "n0_swapchain OK" << "\n";
+
     createImageViews();
+    n0_imageViews.createImageViews(ctx);
+    std::cout << "n0_imageViews OK" << "\n";
+
     createDescriptorSetLayout();
-    // n0_pipeline.createGraphicsPipeline(ctx);
+    n0_descriptor.createDescriptorSetLayout(ctx);
+    std::cout << "n0_descriptor OK" << "\n";
+
     createGraphicsPipeline();
+    n0_pipeline.createGraphicsPipeline(ctx);
+    std::cout << "n0_pipeline OK" << "\n";
+
     createCommandPool();
+    n0_commandPool.createCommandPool(ctx);
+    std::cout << "n0_commandPool OK" << "\n";
+
     createDepthResources();
+    n0_depthResource.createDepthResources(ctx);
+    std::cout << "n0_depthResource OK" << "\n";
+
     createTextureImage();
+    n0_textureImage.createTextureImage(ctx, n0_commandBuffer, path);
+    std::cout << "n0_textureImage OK" << "\n";
+
     createTextureImageView();
     createTextureSampler();
     loadModel();

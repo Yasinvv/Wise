@@ -1,6 +1,8 @@
 module;
 
+#include <string>
 #include <vulkan/vulkan.hpp>
+
 #include <vulkan/vulkan_raii.hpp>
 
 export module context;
@@ -12,6 +14,9 @@ export struct Configs {
 };
 
 export struct VK_CTX {
+  std::vector<const char*> requiredDeviceExtension = {
+      vk::KHRSwapchainExtensionName};
+
   vk::raii::DescriptorPool imGuiDescriptorPool{nullptr};
   vk::raii::Context context;
   vk::raii::Instance instance{nullptr};
@@ -20,6 +25,7 @@ export struct VK_CTX {
   vk::raii::PhysicalDevice physicalDevice{nullptr};
   vk::raii::Device device{nullptr};
   vk::raii::Queue queue{nullptr};
+  uint32_t queueIndex = ~0;
   vk::raii::SwapchainKHR swapChain{nullptr};
   std::vector<vk::Image> swapChainImages;
   vk::SurfaceFormatKHR swapChainSurfaceFormat;
@@ -58,9 +64,11 @@ export struct VK_CTX {
   std::vector<vk::raii::Semaphore> renderFinishedSemaphores;
   std::vector<vk::raii::Fence> inFlightFences;
   uint32_t frameIndex = 0;
+};
 
-  std::vector<const char*> requiredDeviceExtension{
-      vk::KHRSwapchainExtensionName};
+export struct Path {
+  std::string MODEL_PATH{};
+  std::string TEXTURE_PATH{};
 };
 
 export struct InfiniteGrid {
