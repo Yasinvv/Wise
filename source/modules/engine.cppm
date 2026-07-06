@@ -58,7 +58,7 @@ public:
   void run() {
     WisE::Window::WindowSettings n1_ws{
         .appname = "WisE", .appversion = "0.0.1", .appID = "1"};
-    n1_window.initWindow(n1_ws);
+    n1_window.initWindow(n1_ws, configs);
     initVulkan();
     mainLoop();
     cleanup();
