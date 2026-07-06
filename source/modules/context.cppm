@@ -1,5 +1,6 @@
 module;
 
+#include <cstdint>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <string>
@@ -14,6 +15,8 @@ namespace WisE {
 
 export struct Configs {
   uint8_t MaxFPS{30U};
+  uint16_t WIDTH{1920};
+  uint16_t HEIGHT{1080};
 };
 
 export struct VK_CTX {

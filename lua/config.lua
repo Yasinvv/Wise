@@ -1,1 +1,3 @@
 SetMaxFPS = 55
+WIDTH = 1920
+HEIGHT = 1080
