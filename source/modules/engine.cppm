@@ -1,11 +1,10 @@
-
 /*
  * Part of WisE
- * Developed by Yasinvv (2026)
- * * This file ports and adapts concepts from Vulkan-Tutorial by Alexander
- * Overvoorde.
- * Licensed under CC BY-SA 4.0 (See /LICENSE for details)
+ * Copyright 2026 Yasinvv
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * See /LICENSE for details
  */
+
 module;
 
 #include <SDL3/SDL.h>
@@ -94,7 +93,6 @@ private:
   WisE::Grid grid;
   WisE::Draw draw;
 
-  WisE::InfiniteGrid m_infiniteGrid;
   WisE::InfiniteGrid m1_infiniteGrid;
 
   void framebufferResizeCallback([[maybe_unused]] int width,
