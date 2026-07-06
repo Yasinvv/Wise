@@ -23,7 +23,7 @@ public:
     // indexed by frameIndex,
     //       while renderFinishedSemaphores is indexed by imageIndex
     auto fenceResult = ctx.device.waitForFences(
-        *ctx.inFlightFences[ctx.frameIndex], vk::True, UINT64_MAX);
+        {ctx.inFlightFences[ctx.frameIndex]}, vk::True, UINT64_MAX);
     if (fenceResult != vk::Result::eSuccess) {
       throw std::runtime_error("failed to wait for fence!");
     }
