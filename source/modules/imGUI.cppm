@@ -16,8 +16,6 @@ namespace WisE {
 
 export class ImGUI {
 private:
-  vk::raii::DescriptorPool imGuiDescriptorPool{nullptr};
-
 public:
   void initImGui(VK_CTX& ctx, Window& window) {
     std::array<vk::DescriptorPoolSize, 6> poolSizes{
@@ -34,7 +32,7 @@ public:
         .poolSizeCount = static_cast<uint32_t>(poolSizes.size()),
         .pPoolSizes = poolSizes.data()};
 
-    imGuiDescriptorPool = vk::raii::DescriptorPool(ctx.device, poolInfo);
+    ctx.imGuiDescriptorPool = vk::raii::DescriptorPool(ctx.device, poolInfo);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -50,7 +48,7 @@ public:
     initInfo.QueueFamily = 0;
     initInfo.Queue = *vk::raii::Queue(ctx.device, initInfo.QueueFamily, 0);
 
-    initInfo.DescriptorPool = *imGuiDescriptorPool;
+    initInfo.DescriptorPool = *ctx.imGuiDescriptorPool;
     initInfo.MinImageCount = 2;
     initInfo.ImageCount = static_cast<uint32_t>(ctx.swapChainImages.size());
 

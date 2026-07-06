@@ -168,6 +168,7 @@ private:
   WisE::Model_CTX model_ctx;
   WisE::ImGUI mainGUI;
   WisE::Grid grid;
+  WisE::Draw draw;
 
   vk::raii::DescriptorPool imGuiDescriptorPool{nullptr};
   vk::raii::Context context;
@@ -332,8 +333,8 @@ private:
     n0_systemObject.createSyncObjects(ctx);
     std::cout << "n0_systemObject OK" << "\n";
 
-    initImGui();
-    //  mainGUI.initImGui(ctx, n1_window);
+    // initImGui();
+    mainGUI.initImGui(ctx, n1_window);
   }
 
   void mainLoop() {
@@ -342,7 +343,11 @@ private:
       // std::cout << deltatime << "\n";
       AppEvents();
       camera.updatePlayerMovement(deltatime);
+      draw.drawFrame(ctx, deltatime, configs, n0_swapchain, n0_commandBuffer,
+                     n1_window.window, event, camera, m1_infiniteGrid,
+                     model_ctx);
       drawFrame(deltatime);
+
       FPSCalculation();
     }
     device.waitIdle();
@@ -1185,7 +1190,8 @@ private:
     commandBuffers = vk::raii::CommandBuffers(device, allocInfo);
   }
 
-  void recordCommandBuffer(uint32_t imageIndex, float& deltaTime) {
+  void recordCommandBuffer(uint32_t imageIndex,
+                           [[maybe_unused]] float& deltaTime) {
     auto& commandBuffer = commandBuffers[frameIndex];
     commandBuffer.begin({});
 
@@ -1263,11 +1269,7 @@ private:
                                      *descriptorSets[frameIndex], nullptr);
 
     commandBuffer.drawIndexed(m_infiniteGrid.indexCount, 1, 0, 0, 0);
-    //
-    //
-    // IMGUI
-    //
-    //
+    /* IMGUI
 
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplSDL3_NewFrame();
@@ -1299,11 +1301,7 @@ private:
 
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *commandBuffer);
 
-    //
-    //
-    //
-    //
-    //
+    */
 
     commandBuffer.endRendering();
 

@@ -1,6 +1,9 @@
 
 module;
 
+#include "imgui.h"
+#include "imgui_impl_sdl3.h"
+#include "imgui_impl_vulkan.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <utility>
@@ -135,7 +138,8 @@ public:
     memcpy(ctx.uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
   }
 
-  void recordCommandBuffer(uint32_t imageIndex, VK_CTX& ctx,
+  void recordCommandBuffer(uint32_t imageIndex, float& deltaTime,
+                           Configs& configs, VK_CTX& ctx,
                            InfiniteGrid& m_infiniteGrid, Model_CTX& model) {
     auto& commandBuffer = ctx.commandBuffers[ctx.frameIndex];
     commandBuffer.begin({});
@@ -214,6 +218,49 @@ public:
         *ctx.descriptorSets[ctx.frameIndex], nullptr);
 
     commandBuffer.drawIndexed(m_infiniteGrid.indexCount, 1, 0, 0, 0);
+
+    //
+    //
+    // IMGUI
+    //
+    //
+
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
+    ImGui::NewFrame();
+
+    ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Always);
+    ImGui::Begin("Debug Info", nullptr,
+                 ImGuiWindowFlags_NoDecoration |
+                     ImGuiWindowFlags_AlwaysAutoResize |
+                     ImGuiWindowFlags_NoSavedSettings |
+                     ImGuiWindowFlags_NoFocusOnAppearing |
+                     ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoBackground);
+
+    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "FPS: %.1f (%.4f ms)",
+                       1.0f / deltaTime, deltaTime * 1000.0f);
+    ImGui::Text("VK1.4\nSDL3");
+    ImGui::Separator();
+    ImGui::PushItemWidth(50.0f);
+
+    uint8_t minFPS = 1, maxFPS = 240;
+
+    ImGui::SliderScalar("Max FPS Limit ( - , + )", ImGuiDataType_U8,
+                        &configs.MaxFPS, &minFPS, &maxFPS, "%u",
+                        ImGuiSliderFlags_AlwaysClamp);
+    ImGui::PopItemWidth();
+    ImGui::End();
+
+    ImGui::Render();
+
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *commandBuffer);
+
+    //
+    //
+    //
+    //
+    //
+
     commandBuffer.endRendering();
 
     /*transition_image_layout(swapChainImages[imageIndex],

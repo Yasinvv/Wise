@@ -15,7 +15,8 @@ namespace WisE {
 export class Draw {
 private:
 public:
-  void drawFrame(VK_CTX& ctx, Swapchain& swap, CommandBuffer& commandBuffer,
+  void drawFrame(VK_CTX& ctx, float& deltaTime, Configs& configs,
+                 Swapchain& swap, CommandBuffer& commandBuffer,
                  SDL_Window* sdlwindow, SDL_Event& event, Camera& camera,
                  InfiniteGrid& m_infiniteGrid, Model_CTX& model) {
     // Note: inFlightFences, presentCompleteSemaphores, and commandBuffers are
@@ -51,7 +52,8 @@ public:
     ctx.device.resetFences(*ctx.inFlightFences[ctx.frameIndex]);
 
     ctx.commandBuffers[ctx.frameIndex].reset();
-    commandBuffer.recordCommandBuffer(imageIndex, ctx, m_infiniteGrid, model);
+    commandBuffer.recordCommandBuffer(imageIndex, deltaTime, configs, ctx,
+                                      m_infiniteGrid, model);
 
     vk::PipelineStageFlags waitDestinationStageMask(
         vk::PipelineStageFlagBits::eColorAttachmentOutput);
