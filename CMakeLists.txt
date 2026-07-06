@@ -58,8 +58,14 @@ target_sources(prog
         source/modules/descriptor.cppm
         source/modules/commandPool.cppm
         source/modules/depthResource.cppm
-        source/modules/textureImage.cppm
+        source/modules/texture.cppm
         source/modules/commandBuffer.cppm
+        source/modules/model.cppm
+        source/modules/systemObject.cppm
+        source/modules/imGUI.cppm
+        source/modules/temp/grid.cppm
+        source/modules/draw.cppm
+
 )
 
 target_include_directories(prog PRIVATE

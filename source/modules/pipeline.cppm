@@ -13,9 +13,6 @@ namespace WisE {
 
 export class Pipeline {
 private:
-  vk::raii::PipelineLayout pipelineLayout{nullptr};
-  vk::raii::Pipeline graphicsPipeline{nullptr};
-
 public:
   void createGraphicsPipeline(WisE::VK_CTX& ctx) {
     vk::raii::ShaderModule shaderModule = WisE::createShaderModule(
@@ -86,7 +83,8 @@ public:
         .setLayoutCount = 1,
         .pSetLayouts = &*ctx.descriptorSetLayout,
         .pushConstantRangeCount = 0};
-    pipelineLayout = vk::raii::PipelineLayout(ctx.device, pipelineLayoutInfo);
+    ctx.pipelineLayout =
+        vk::raii::PipelineLayout(ctx.device, pipelineLayoutInfo);
 
     vk::Format depthFormat = WisE::findDepthFormat(ctx.physicalDevice);
 
@@ -103,13 +101,13 @@ public:
              .pDepthStencilState = &depthStencil,
              .pColorBlendState = &colorBlending,
              .pDynamicState = &dynamicState,
-             .layout = pipelineLayout,
+             .layout = ctx.pipelineLayout,
              .renderPass = nullptr},
             {.colorAttachmentCount = 1,
              .pColorAttachmentFormats = &ctx.swapChainSurfaceFormat.format,
              .depthAttachmentFormat = depthFormat}};
 
-    graphicsPipeline = vk::raii::Pipeline(
+    ctx.graphicsPipeline = vk::raii::Pipeline(
         ctx.device, nullptr,
         pipelineCreateInfoChain.get<vk::GraphicsPipelineCreateInfo>());
   }

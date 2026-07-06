@@ -56,9 +56,13 @@ import descriptor;
 import commandPool;
 import depthResource;
 import commandBuffer;
+import texture;
+import model;
+import systemObject;
+import grid;
+import draw;
 
-import textureImage;
-
+import imGUI;
 import context;
 import pipeline;
 
@@ -70,7 +74,6 @@ constexpr bool enableValidationLayers = true;
 
 const std::string MODEL_PATH = "data/models/viking_room.obj";
 const std::string TEXTURE_PATH = "data/textures/viking_room.png";
-constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
 const std::vector<char const*> validationLayers = {
     "VK_LAYER_KHRONOS_validation"};
@@ -159,7 +162,13 @@ private:
   WisE::CommandPool n0_commandPool;
   WisE::DepthResource n0_depthResource;
   WisE::CommandBuffer n0_commandBuffer;
-  WisE::TextureImage n0_textureImage;
+  WisE::Texture n0_texture;
+  WisE::Model n0_model;
+  WisE::SystemObject n0_systemObject;
+  WisE::Model_CTX model_ctx;
+  WisE::ImGUI mainGUI;
+  WisE::Grid grid;
+
   vk::raii::DescriptorPool imGuiDescriptorPool{nullptr};
   vk::raii::Context context;
   vk::raii::Instance instance{nullptr};
@@ -213,6 +222,7 @@ private:
   bool framebufferResized = false;
 
   WisE::InfiniteGrid m_infiniteGrid;
+  WisE::InfiniteGrid m1_infiniteGrid;
 
   std::vector<const char*> requiredDeviceExtension = {
       vk::KHRSwapchainExtensionName};
@@ -271,23 +281,59 @@ private:
     std::cout << "n0_depthResource OK" << "\n";
 
     createTextureImage();
-    n0_textureImage.createTextureImage(ctx, n0_commandBuffer, path);
+    n0_texture.createTextureImage(ctx, n0_commandBuffer, path);
     std::cout << "n0_textureImage OK" << "\n";
 
     createTextureImageView();
+    n0_texture.createTextureImageView(ctx);
+    std::cout << "n0_textureImageView OK" << "\n";
+
     createTextureSampler();
+    n0_texture.createTextureSampler(ctx);
+    std::cout << "n0_textureSampler OK" << "\n";
+
     loadModel();
+    n0_model.loadModel(path, model_ctx);
+    std::cout << "n0_model OK" << "\n";
+
     createGridMesh();
+    grid.createGridMesh(ctx, m1_infiniteGrid, n0_commandBuffer);
+    std::cout << "n0_gridMesh OK" << "\n";
+
     createGridPipeline();
+    grid.createGridPipeline(ctx, m1_infiniteGrid);
+    std::cout << "n0_gridPipeLine OK" << "\n";
+
     createVertexBuffer();
+    n0_commandBuffer.createVertexBuffer(ctx, model_ctx);
+    std::cout << "n0_vertexBuffer OK" << "\n";
+
     createIndexBuffer();
+    n0_commandBuffer.createIndexBuffer(ctx, model_ctx);
+    std::cout << "n0_indexBuffer OK" << "\n";
+
     createUniformBuffers();
+    n0_commandBuffer.createUniformBuffers(ctx);
+    std::cout << "n0_unifromBuffer OK" << "\n";
+
     createDescriptorPool();
+    n0_descriptor.createDescriptorPool(ctx);
+    std::cout << "n0_descriptorPool OK" << "\n";
+
     createDescriptorSets();
+    n0_descriptor.createDescriptorSets(ctx);
+    std::cout << "n0_descriptorSet OK" << "\n";
+
     createCommandBuffers();
+    n0_commandBuffer.createCommandBuffers(ctx);
+    std::cout << "n0_commandBuffer OK" << "\n";
+
     createSyncObjects();
+    n0_systemObject.createSyncObjects(ctx);
+    std::cout << "n0_systemObject OK" << "\n";
 
     initImGui();
+    //  mainGUI.initImGui(ctx, n1_window);
   }
 
   void mainLoop() {
@@ -1139,7 +1185,7 @@ private:
     commandBuffers = vk::raii::CommandBuffers(device, allocInfo);
   }
 
-  void recordCommandBuffer(uint32_t imageIndex, float deltaTime) {
+  void recordCommandBuffer(uint32_t imageIndex, float& deltaTime) {
     auto& commandBuffer = commandBuffers[frameIndex];
     commandBuffer.begin({});
 
@@ -1324,7 +1370,7 @@ private:
   }
 
   void updateUniformBuffer(uint32_t currentImage) {
-    [[maybe_unused]] float time{timer.getTime()};
+    //[[maybe_unused]] float time{timer.getTime()};
 
     UniformBufferObject ubo{};
     ubo.model = rotate(glm::mat4(1.0f), glm::radians(-90.0f),
@@ -1341,7 +1387,7 @@ private:
     memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
   }
 
-  void drawFrame(float deltaTime) {
+  void drawFrame(float& deltaTime) {
     // Note: inFlightFences, presentCompleteSemaphores, and commandBuffers are
     // indexed by frameIndex,
     //       while renderFinishedSemaphores is indexed by imageIndex

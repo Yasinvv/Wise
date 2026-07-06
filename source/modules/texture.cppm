@@ -4,13 +4,13 @@ module;
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_raii.hpp>
 
-export module textureImage;
+export module texture;
 import context;
 import extra;
 import commandBuffer;
 
 namespace WisE {
-export class TextureImage {
+export class Texture {
 private:
 public:
   void createTextureImage(VK_CTX& ctx, CommandBuffer& m_commandBuffer,
@@ -55,6 +55,29 @@ public:
                           vk::ImageLayout::eTransferDstOptimal,
                           vk::ImageLayout::eShaderReadOnlyOptimal);
     m_commandBuffer.endSingleTimeCommands(std::move(commandBuffer), ctx);
+  }
+  void createTextureImageView(VK_CTX& ctx) {
+    ctx.textureImageView =
+        createImageView(*ctx.textureImage, vk::Format::eR8G8B8A8Srgb,
+                        vk::ImageAspectFlagBits::eColor, ctx.device);
+  }
+
+  void createTextureSampler(VK_CTX& ctx) {
+    vk::PhysicalDeviceProperties properties =
+        ctx.physicalDevice.getProperties();
+    vk::SamplerCreateInfo samplerInfo{
+        .magFilter = vk::Filter::eLinear,
+        .minFilter = vk::Filter::eLinear,
+        .mipmapMode = vk::SamplerMipmapMode::eLinear,
+        .addressModeU = vk::SamplerAddressMode::eRepeat,
+        .addressModeV = vk::SamplerAddressMode::eRepeat,
+        .addressModeW = vk::SamplerAddressMode::eRepeat,
+        .mipLodBias = 0.0f,
+        .anisotropyEnable = vk::True,
+        .maxAnisotropy = properties.limits.maxSamplerAnisotropy,
+        .compareEnable = vk::False,
+        .compareOp = vk::CompareOp::eAlways};
+    ctx.textureSampler = vk::raii::Sampler(ctx.device, samplerInfo);
   }
 };
 

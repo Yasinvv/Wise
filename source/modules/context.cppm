@@ -1,12 +1,15 @@
 module;
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <string>
 #include <vulkan/vulkan.hpp>
-
 #include <vulkan/vulkan_raii.hpp>
 
 export module context;
+import vertex;
 
+export constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 namespace WisE {
 
 export struct Configs {
@@ -33,6 +36,9 @@ export struct VK_CTX {
   std::vector<vk::raii::ImageView> swapChainImageViews;
 
   vk::raii::DescriptorSetLayout descriptorSetLayout{nullptr};
+
+  vk::raii::PipelineLayout pipelineLayout{nullptr};
+  vk::raii::Pipeline graphicsPipeline{nullptr};
 
   vk::raii::Image depthImage{nullptr};
   vk::raii::DeviceMemory depthImageMemory{nullptr};
@@ -64,11 +70,23 @@ export struct VK_CTX {
   std::vector<vk::raii::Semaphore> renderFinishedSemaphores;
   std::vector<vk::raii::Fence> inFlightFences;
   uint32_t frameIndex = 0;
+
+  bool framebufferResized = false;
 };
 
 export struct Path {
   std::string MODEL_PATH{};
   std::string TEXTURE_PATH{};
+};
+
+export struct Model_CTX {
+  std::vector<Vertex> vertices;
+  std::vector<uint32_t> indices;
+};
+export struct UniformBufferObject {
+  alignas(16) glm::mat4 model;
+  alignas(16) glm::mat4 view;
+  alignas(16) glm::mat4 proj;
 };
 
 export struct InfiniteGrid {

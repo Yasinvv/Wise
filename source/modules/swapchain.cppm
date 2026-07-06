@@ -1,5 +1,6 @@
 module;
 
+#include <SDL3/SDL_events.h>
 #include <SDL3/SDL_vulkan.h>
 #include <algorithm>
 #include <limits>
@@ -95,6 +96,15 @@ public:
                                  capabilities.maxImageExtent.width),
             std::clamp<uint32_t>(height, capabilities.minImageExtent.height,
                                  capabilities.maxImageExtent.height)};
+  }
+
+  void recreateSwapChain(SDL_Window* sdlwindow, SDL_Event& event) {
+    int width = 0, height = 0;
+    SDL_GetWindowSizeInPixels(sdlwindow, &width, &height);
+    while (width == 0 || height == 0) {
+      SDL_WaitEvent(&event);
+      SDL_GetWindowSizeInPixels(sdlwindow, &width, &height);
+    }
   }
 };
 
