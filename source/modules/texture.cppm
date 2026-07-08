@@ -13,8 +13,8 @@ namespace WisE {
 export class Texture {
 private:
 public:
-  void createTextureImage(VK_CTX& ctx, CommandBuffer& m_commandBuffer,
-                          Path& path) {
+  void createTextureImage(VK_CTX& ctx, Object_CTX& object,
+                          CommandBuffer& m_commandBuffer, Path& path) {
     int texWidth, texHeight, texChannels;
     stbi_uc* pixels = stbi_load(path.TEXTURE_PATH.c_str(), &texWidth,
                                 &texHeight, &texChannels, STBI_rgb_alpha);
@@ -36,33 +36,35 @@ public:
 
     stbi_image_free(pixels);
 
-    std::tie(ctx.textureImage, ctx.textureImageMemory) = createImage(
-        texWidth, texHeight, vk::Format::eR8G8B8A8Srgb,
-        vk::ImageTiling::eOptimal,
-        vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
-        vk::MemoryPropertyFlagBits::eDeviceLocal, ctx.device,
-        ctx.physicalDevice);
+    std::tie(object.materialRef->textureImage,
+             object.materialRef->textureImageMemory) =
+        createImage(texWidth, texHeight, vk::Format::eR8G8B8A8Srgb,
+                    vk::ImageTiling::eOptimal,
+                    vk::ImageUsageFlagBits::eTransferDst |
+                        vk::ImageUsageFlagBits::eSampled,
+                    vk::MemoryPropertyFlagBits::eDeviceLocal, ctx.device,
+                    ctx.physicalDevice);
 
     vk::raii::CommandBuffer commandBuffer =
         m_commandBuffer.beginSingleTimeCommands(ctx);
-    transitionImageLayout(commandBuffer, ctx.textureImage,
+    transitionImageLayout(commandBuffer, object.materialRef->textureImage,
                           vk::ImageLayout::eUndefined,
                           vk::ImageLayout::eTransferDstOptimal);
-    copyBufferToImage(commandBuffer, stagingBuffer, ctx.textureImage,
-                      static_cast<uint32_t>(texWidth),
-                      static_cast<uint32_t>(texHeight));
-    transitionImageLayout(commandBuffer, ctx.textureImage,
+    copyBufferToImage(
+        commandBuffer, stagingBuffer, object.materialRef->textureImage,
+        static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+    transitionImageLayout(commandBuffer, object.materialRef->textureImage,
                           vk::ImageLayout::eTransferDstOptimal,
                           vk::ImageLayout::eShaderReadOnlyOptimal);
     m_commandBuffer.endSingleTimeCommands(std::move(commandBuffer), ctx);
   }
-  void createTextureImageView(VK_CTX& ctx) {
-    ctx.textureImageView =
-        createImageView(*ctx.textureImage, vk::Format::eR8G8B8A8Srgb,
-                        vk::ImageAspectFlagBits::eColor, ctx.device);
+  void createTextureImageView(VK_CTX& ctx, Object_CTX& object) {
+    object.materialRef->textureImageView = createImageView(
+        *object.materialRef->textureImage, vk::Format::eR8G8B8A8Srgb,
+        vk::ImageAspectFlagBits::eColor, ctx.device);
   }
 
-  void createTextureSampler(VK_CTX& ctx) {
+  void createTextureSampler(VK_CTX& ctx, Object_CTX& object) {
     vk::PhysicalDeviceProperties properties =
         ctx.physicalDevice.getProperties();
     vk::SamplerCreateInfo samplerInfo{
@@ -77,7 +79,8 @@ public:
         .maxAnisotropy = properties.limits.maxSamplerAnisotropy,
         .compareEnable = vk::False,
         .compareOp = vk::CompareOp::eAlways};
-    ctx.textureSampler = vk::raii::Sampler(ctx.device, samplerInfo);
+    object.materialRef->textureSampler =
+        vk::raii::Sampler(ctx.device, samplerInfo);
   }
 };
 

@@ -57,8 +57,8 @@ public:
         .queueCreateInfoCount = 1,
         .pQueueCreateInfos = &deviceQueueCreateInfo,
         .enabledExtensionCount =
-            static_cast<uint32_t>(ctx.requiredDeviceExtension.size()),
-        .ppEnabledExtensionNames = ctx.requiredDeviceExtension.data()};
+            static_cast<uint32_t>(requiredDeviceExtension.size()),
+        .ppEnabledExtensionNames = requiredDeviceExtension.data()};
 
     ctx.device = vk::raii::Device(ctx.physicalDevice, deviceCreateInfo);
     ctx.queue = vk::raii::Queue(ctx.device, ctx.queueIndex, 0);

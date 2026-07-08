@@ -94,7 +94,10 @@ private:
   WisE::ImGUI mainGUI;
   WisE::Grid grid;
 
-  WisE::InfiniteGrid m1_infiniteGrid;
+  WisE::Material viking_room_material;
+  WisE::Object_CTX viking_room;
+  WisE::Material m1_infiniteGrid_material;
+  WisE::Object_CTX m1_infiniteGrid;
 
   void framebufferResizeCallback([[maybe_unused]] int width,
                                  [[maybe_unused]] int height) {
@@ -109,6 +112,9 @@ private:
 
   void initVulkan() {
     init_Configs();
+
+    viking_room.materialRef = &viking_room_material;
+    m1_infiniteGrid.materialRef = &m1_infiniteGrid_material;
 
     n0_instance.createInstance(ctx);
     SDL_Log("n0_instance OK");
@@ -131,11 +137,18 @@ private:
     n0_imageViews.createImageViews(ctx);
     SDL_Log("n0_imageViews OK");
 
-    n0_descriptor.createDescriptorSetLayout(ctx);
+    n0_descriptor.createDescriptorSetLayout(ctx, viking_room);
     SDL_Log("n0_descriptor OK");
 
-    n0_pipeline.createGraphicsPipeline(ctx, n0_pipelineConfigs);
+    n0_descriptor.createDescriptorSetLayout(ctx, m1_infiniteGrid);
+    SDL_Log("m1_infiniteGrid descriptor layout OK");
+
+    n0_pipeline.createGraphicsPipeline(
+        ctx, viking_room.materialRef->descriptorSetLayout, n0_pipelineConfigs);
     SDL_Log("n0_pipeline OK");
+
+    grid.createGridPipeline(ctx, m1_infiniteGrid);
+    SDL_Log("n0_gridPipeLine OK");
 
     n0_commandPool.createCommandPool(ctx);
     SDL_Log("n0_commandPool OK");
@@ -143,13 +156,13 @@ private:
     n0_depthResource.createDepthResources(ctx);
     SDL_Log("n0_depthResource OK");
 
-    n0_texture.createTextureImage(ctx, n0_commandBuffer, path);
+    n0_texture.createTextureImage(ctx, viking_room, n0_commandBuffer, path);
     SDL_Log("n0_textureImage OK");
 
-    n0_texture.createTextureImageView(ctx);
+    n0_texture.createTextureImageView(ctx, viking_room);
     SDL_Log("n0_textureImageView OK");
 
-    n0_texture.createTextureSampler(ctx);
+    n0_texture.createTextureSampler(ctx, viking_room);
     SDL_Log("n0_textureSampler OK");
 
     n0_model.loadModel(path, model_ctx);
@@ -158,22 +171,26 @@ private:
     grid.createGridMesh(ctx, m1_infiniteGrid, n0_commandBuffer);
     SDL_Log("n0_gridMesh OK");
 
-    grid.createGridPipeline(ctx, m1_infiniteGrid);
-    SDL_Log("n0_gridPipeLine OK");
+    n0_commandBuffer.createUniformBuffers(ctx, m1_infiniteGrid);
+    SDL_Log("m1_infiniteGrid uniformBuffers OK");
 
-    n0_commandBuffer.createVertexBuffer(ctx, model_ctx);
+    n0_descriptor.createDescriptorPool(ctx, m1_infiniteGrid);
+    n0_descriptor.createDescriptorSets(ctx, m1_infiniteGrid);
+    SDL_Log("m1_infiniteGrid Descriptors OK");
+
+    n0_commandBuffer.createVertexBuffer(ctx, viking_room, model_ctx);
     SDL_Log("n0_vertexBuffer OK");
 
-    n0_commandBuffer.createIndexBuffer(ctx, model_ctx);
+    n0_commandBuffer.createIndexBuffer(ctx, viking_room, model_ctx);
     SDL_Log("n0_indexBuffer OK");
 
-    n0_commandBuffer.createUniformBuffers(ctx);
+    n0_commandBuffer.createUniformBuffers(ctx, viking_room);
     SDL_Log("n0_unifromBuffer OK");
 
-    n0_descriptor.createDescriptorPool(ctx);
+    n0_descriptor.createDescriptorPool(ctx, viking_room);
     SDL_Log("n0_descriptorPool OK");
 
-    n0_descriptor.createDescriptorSets(ctx);
+    n0_descriptor.createDescriptorSets(ctx, viking_room);
     SDL_Log("n0_descriptorSet OK");
 
     n0_commandBuffer.createCommandBuffers(ctx);
@@ -357,26 +374,30 @@ private:
         0, vk::Rect2D(vk::Offset2D(0, 0), ctx.swapChainExtent));
 
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
-                               *ctx.graphicsPipeline);
-    commandBuffer.bindVertexBuffers(0, *ctx.vertexBuffer, {0});
+                               *viking_room.materialRef->graphicsPipeline);
+    commandBuffer.bindVertexBuffers(0, *viking_room.vertexBuffer, {0});
     commandBuffer.bindIndexBuffer(
-        *ctx.indexBuffer, 0,
+        *viking_room.indexBuffer, 0,
         vk::IndexTypeValue<decltype(model_ctx.indices)::value_type>::value);
     commandBuffer.bindDescriptorSets(
-        vk::PipelineBindPoint::eGraphics, ctx.pipelineLayout, 0,
-        *ctx.descriptorSets[ctx.frameIndex], nullptr);
+        vk::PipelineBindPoint::eGraphics,
+        viking_room.materialRef->pipelineLayout, 0,
+        *viking_room.descriptorSets[ctx.frameIndex], nullptr);
     commandBuffer.drawIndexed(static_cast<uint32_t>(model_ctx.indices.size()),
                               1, 0, 0, 0);
 
+    // grid
+
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
-                               *m1_infiniteGrid.graphicsPipeline);
+                               *m1_infiniteGrid.materialRef->graphicsPipeline);
     commandBuffer.bindVertexBuffers(0, *m1_infiniteGrid.vertexBuffer, {0});
     commandBuffer.bindIndexBuffer(*m1_infiniteGrid.indexBuffer, 0,
                                   vk::IndexType::eUint32);
 
     commandBuffer.bindDescriptorSets(
-        vk::PipelineBindPoint::eGraphics, *m1_infiniteGrid.pipelineLayout, 0,
-        *ctx.descriptorSets[ctx.frameIndex], nullptr);
+        vk::PipelineBindPoint::eGraphics,
+        *m1_infiniteGrid.materialRef->pipelineLayout, 0,
+        *viking_room.descriptorSets[ctx.frameIndex], nullptr);
 
     commandBuffer.drawIndexed(m1_infiniteGrid.indexCount, 1, 0, 0, 0);
 
@@ -470,7 +491,8 @@ private:
       assert(result == vk::Result::eTimeout || result == vk::Result::eNotReady);
       throw std::runtime_error("failed to acquire swap chain image!");
     }
-    n0_commandBuffer.updateUniformBuffer(ctx.frameIndex, ctx, camera);
+    n0_commandBuffer.updateUniformBuffer(ctx.frameIndex, ctx, viking_room,
+                                         camera);
 
     // Only reset the fence if we are submitting work
     ctx.device.resetFences(*ctx.inFlightFences[ctx.frameIndex]);

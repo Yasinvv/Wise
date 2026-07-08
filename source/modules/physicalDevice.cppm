@@ -11,8 +11,7 @@ import context;
 namespace WisE {
 export class PhysicalDevice {
 public:
-  bool isDeviceSuitable(const vk::raii::PhysicalDevice& pDevice,
-                        const VK_CTX& ctx) {
+  bool isDeviceSuitable(const vk::raii::PhysicalDevice& pDevice) {
     bool supportsVulkan1_4 =
         pDevice.getProperties().apiVersion >= VK_API_VERSION_1_4;
 
@@ -25,7 +24,7 @@ public:
     auto availableDeviceExtensions =
         pDevice.enumerateDeviceExtensionProperties();
     bool supportsAllRequiredExtensions = std::ranges::all_of(
-        ctx.requiredDeviceExtension,
+        requiredDeviceExtension,
         [&availableDeviceExtensions](auto const& requiredExt) {
           return std::ranges::any_of(availableDeviceExtensions,
                                      [requiredExt](auto const& availableExt) {
@@ -55,7 +54,7 @@ public:
         ctx.instance.enumeratePhysicalDevices();
     auto const devIter =
         std::ranges::find_if(physicalDevices, [&](auto const& pDevice) {
-          return isDeviceSuitable(pDevice, ctx);
+          return isDeviceSuitable(pDevice);
         });
     if (devIter == physicalDevices.end()) {
       throw std::runtime_error("failed to find a suitable GPU!");

@@ -1,7 +1,8 @@
 * TODO
 ** Short Term
-   - (x) Move recoredCommandBuffer to the main loop
-   - (-) Refactor the Context.cppm
+   - (x) Move recoredCommandBuffer to the main loop .
+   - (-) Refactor the Context.cppm .
+   - (-) Delete the CommandBuffers Class at the end .
 
 ** Long Term
   - (-) Render In Vulkan

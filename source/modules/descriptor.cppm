@@ -12,7 +12,7 @@ namespace WisE {
 export class Descriptor {
 private:
 public:
-  void createDescriptorSetLayout(VK_CTX& ctx) {
+  void createDescriptorSetLayout(VK_CTX& ctx, Object_CTX& object) {
     std::array<vk::DescriptorSetLayoutBinding, 2> bindings{
         {{.binding = 0,
           .descriptorType = vk::DescriptorType::eUniformBuffer,
@@ -26,10 +26,10 @@ public:
     vk::DescriptorSetLayoutCreateInfo layoutInfo{
         .bindingCount = static_cast<uint32_t>(bindings.size()),
         .pBindings = bindings.data()};
-    ctx.descriptorSetLayout =
+    object.materialRef->descriptorSetLayout =
         vk::raii::DescriptorSetLayout(ctx.device, layoutInfo);
   }
-  void createDescriptorPool(VK_CTX& ctx) {
+  void createDescriptorPool(VK_CTX& ctx, Object_CTX& object) {
     std::array<vk::DescriptorPoolSize, 2> poolSize{
         {{.type = vk::DescriptorType::eUniformBuffer,
           .descriptorCount = MAX_FRAMES_IN_FLIGHT},
@@ -40,37 +40,37 @@ public:
         .maxSets = MAX_FRAMES_IN_FLIGHT,
         .poolSizeCount = static_cast<uint32_t>(poolSize.size()),
         .pPoolSizes = poolSize.data()};
-    ctx.descriptorPool = vk::raii::DescriptorPool(ctx.device, poolInfo);
+    object.descriptorPool = vk::raii::DescriptorPool(ctx.device, poolInfo);
   }
 
-  void createDescriptorSets(VK_CTX& ctx) {
-    std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT,
-                                                 ctx.descriptorSetLayout);
+  void createDescriptorSets(VK_CTX& ctx, Object_CTX& object) {
+    std::vector<vk::DescriptorSetLayout> layouts(
+        MAX_FRAMES_IN_FLIGHT, object.materialRef->descriptorSetLayout);
     vk::DescriptorSetAllocateInfo allocInfo{
-        .descriptorPool = ctx.descriptorPool,
+        .descriptorPool = object.descriptorPool,
         .descriptorSetCount = static_cast<uint32_t>(layouts.size()),
         .pSetLayouts = layouts.data()};
 
-    ctx.descriptorSets.clear();
-    ctx.descriptorSets = ctx.device.allocateDescriptorSets(allocInfo);
+    object.descriptorSets.clear();
+    object.descriptorSets = ctx.device.allocateDescriptorSets(allocInfo);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-      vk::DescriptorBufferInfo bufferInfo{.buffer = ctx.uniformBuffers[i],
+      vk::DescriptorBufferInfo bufferInfo{.buffer = object.uniformBuffers[i],
                                           .offset = 0,
                                           .range = sizeof(UniformBufferObject)};
       vk::DescriptorImageInfo imageInfo{
-          .sampler = ctx.textureSampler,
-          .imageView = ctx.textureImageView,
+          .sampler = object.materialRef->textureSampler,
+          .imageView = object.materialRef->textureImageView,
           .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal};
 
       std::array<vk::WriteDescriptorSet, 2> descriptorWrites{
-          {{.dstSet = ctx.descriptorSets[i],
+          {{.dstSet = object.descriptorSets[i],
             .dstBinding = 0,
             .dstArrayElement = 0,
             .descriptorCount = 1,
             .descriptorType = vk::DescriptorType::eUniformBuffer,
             .pBufferInfo = &bufferInfo},
-           {.dstSet = ctx.descriptorSets[i],
+           {.dstSet = object.descriptorSets[i],
             .dstBinding = 1,
             .dstArrayElement = 0,
             .descriptorCount = 1,

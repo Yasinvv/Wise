@@ -56,7 +56,10 @@ public:
                                  vk::BufferCopy{.size = size});
     endSingleTimeCommands(std::move(commandCopyBuffer), ctx);
   }
-  void createVertexBuffer(VK_CTX& ctx, Model_CTX& model) {
+  void createVertexBuffer(VK_CTX& ctx, Object_CTX& object, Model_CTX& model) {
+    // I have no Idea how difficult it would be at moment but the plan is to
+    // seperate the core vulkan ctx (context) from the object ones like pipeline
+    // and etc..
     vk::DeviceSize bufferSize =
         sizeof(model.vertices[0]) * model.vertices.size();
 
@@ -70,17 +73,17 @@ public:
     memcpy(dataStaging, model.vertices.data(), bufferSize);
     stagingBufferMemory.unmapMemory();
 
-    std::tie(ctx.vertexBuffer, ctx.vertexBufferMemory) =
+    std::tie(object.vertexBuffer, object.vertexBufferMemory) =
         createBuffer(bufferSize,
                      vk::BufferUsageFlagBits::eVertexBuffer |
                          vk::BufferUsageFlagBits::eTransferDst,
                      vk::MemoryPropertyFlagBits::eDeviceLocal, ctx.device,
                      ctx.physicalDevice);
 
-    copyBuffer(stagingBuffer, ctx.vertexBuffer, bufferSize, ctx);
+    copyBuffer(stagingBuffer, object.vertexBuffer, bufferSize, ctx);
   }
 
-  void createIndexBuffer(VK_CTX& ctx, Model_CTX& model) {
+  void createIndexBuffer(VK_CTX& ctx, Object_CTX& object, Model_CTX& model) {
     vk::DeviceSize bufferSize = sizeof(model.indices[0]) * model.indices.size();
 
     auto [stagingBuffer, stagingBufferMemory] =
@@ -93,16 +96,16 @@ public:
     memcpy(data, model.indices.data(), (size_t)bufferSize);
     stagingBufferMemory.unmapMemory();
 
-    std::tie(ctx.indexBuffer, ctx.indexBufferMemory) =
+    std::tie(object.indexBuffer, object.indexBufferMemory) =
         createBuffer(bufferSize,
                      vk::BufferUsageFlagBits::eIndexBuffer |
                          vk::BufferUsageFlagBits::eTransferDst,
                      vk::MemoryPropertyFlagBits::eDeviceLocal, ctx.device,
                      ctx.physicalDevice);
 
-    copyBuffer(stagingBuffer, ctx.indexBuffer, bufferSize, ctx);
+    copyBuffer(stagingBuffer, object.indexBuffer, bufferSize, ctx);
   }
-  void createUniformBuffers(VK_CTX& ctx) {
+  void createUniformBuffers(VK_CTX& ctx, Object_CTX& object) {
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
       vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
       auto [buffer, bufferMem] =
@@ -110,13 +113,14 @@ public:
                        vk::MemoryPropertyFlagBits::eHostVisible |
                            vk::MemoryPropertyFlagBits::eHostCoherent,
                        ctx.device, ctx.physicalDevice);
-      ctx.uniformBuffers.emplace_back(std::move(buffer));
-      ctx.uniformBuffersMemory.emplace_back(std::move(bufferMem));
-      ctx.uniformBuffersMapped.emplace_back(
-          ctx.uniformBuffersMemory.back().mapMemory(0, bufferSize));
+      object.uniformBuffers.emplace_back(std::move(buffer));
+      object.uniformBuffersMemory.emplace_back(std::move(bufferMem));
+      object.uniformBuffersMapped.emplace_back(
+          object.uniformBuffersMemory.back().mapMemory(0, bufferSize));
     }
   }
-  void updateUniformBuffer(uint32_t currentImage, VK_CTX& ctx, Camera& camera) {
+  void updateUniformBuffer(uint32_t currentImage, VK_CTX& ctx,
+                           Object_CTX& object, Camera& camera) {
     //[[maybe_unused]] float time{timer.getTime()};
 
     UniformBufferObject ubo{};
@@ -132,7 +136,7 @@ public:
                          0.1f, 25.0f);
     ubo.proj[1][1] *= -1;
 
-    memcpy(ctx.uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
+    memcpy(object.uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
   }
 
   void transition_image_layout(VK_CTX& ctx, vk::Image image,

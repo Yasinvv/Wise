@@ -15,7 +15,7 @@ export class Grid {
 
 private:
 public:
-  void createGridMesh(VK_CTX& ctx, InfiniteGrid& m_infiniteGrid,
+  void createGridMesh(VK_CTX& ctx, Object_CTX& m_infiniteGrid,
                       CommandBuffer& m_commandBuffer) {
     std::vector<Vertex> gridVertices = {
         {{-50.0f, -50.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {-50.0f, -50.0f}},
@@ -79,7 +79,7 @@ public:
     }
   }
 
-  void createGridPipeline(VK_CTX& ctx, InfiniteGrid& m_infiniteGrid) {
+  void createGridPipeline(VK_CTX& ctx, Object_CTX& m_infiniteGrid) {
     auto shaderCode = WisE::readFile("data/shaders/grid.spv");
     vk::raii::ShaderModule shaderModule =
         createShaderModule(shaderCode, ctx.device);
@@ -159,9 +159,9 @@ public:
 
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
         .setLayoutCount = 1,
-        .pSetLayouts = &*ctx.descriptorSetLayout,
+        .pSetLayouts = &*m_infiniteGrid.materialRef->descriptorSetLayout,
         .pushConstantRangeCount = 0};
-    m_infiniteGrid.pipelineLayout =
+    m_infiniteGrid.materialRef->pipelineLayout =
         vk::raii::PipelineLayout(ctx.device, pipelineLayoutInfo);
 
     vk::Format depthFormat = findDepthFormat(ctx.physicalDevice);
@@ -179,13 +179,13 @@ public:
              .pDepthStencilState = &depthStencil,
              .pColorBlendState = &colorBlending,
              .pDynamicState = &dynamicState,
-             .layout = *m_infiniteGrid.pipelineLayout,
+             .layout = *m_infiniteGrid.materialRef->pipelineLayout,
              .renderPass = nullptr},
             {.colorAttachmentCount = 1,
              .pColorAttachmentFormats = &ctx.swapChainSurfaceFormat.format,
              .depthAttachmentFormat = depthFormat}};
 
-    m_infiniteGrid.graphicsPipeline = vk::raii::Pipeline(
+    m_infiniteGrid.materialRef->graphicsPipeline = vk::raii::Pipeline(
         ctx.device, nullptr,
         pipelineCreateInfoChain.get<vk::GraphicsPipelineCreateInfo>());
   }

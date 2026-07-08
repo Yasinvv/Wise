@@ -1,5 +1,6 @@
 module;
 
+#include <string>
 #include <vector>
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_raii.hpp>
@@ -35,10 +36,8 @@ public:
     vk::Bool32 blendEnable = vk::False;
   };
 
-  std::pair<vk::raii::PipelineLayout, vk::raii::Pipeline>
-  createGraphicsPipeline(
-      VK_CTX& ctx, const vk::raii::DescriptorSetLayout& descriptorSetLayout,
-      const PipelineConfigs& configs) {
+  void createGraphicsPipeline(VK_CTX& ctx, Object_CTX& object,
+                              const PipelineConfigs& configs) {
     vk::raii::ShaderModule shaderModule = WisE::createShaderModule(
         WisE::readFile(configs.shaderPath), ctx.device);
 
@@ -107,10 +106,10 @@ public:
 
     vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
         .setLayoutCount = 1,
-        .pSetLayouts = &*descriptorSetLayout,
+        .pSetLayouts = &*(object.materialRef->descriptorSetLayout),
         .pushConstantRangeCount = 0};
-
-    vk::raii::PipelineLayout pipelineLayout(ctx.device, pipelineLayoutInfo);
+    object.materialRef->pipelineLayout =
+        vk::raii::PipelineLayout(ctx.device, pipelineLayoutInfo);
 
     vk::Format depthFormat = WisE::findDepthFormat(ctx.physicalDevice);
 
@@ -127,17 +126,15 @@ public:
              .pDepthStencilState = &depthStencil,
              .pColorBlendState = &colorBlending,
              .pDynamicState = &dynamicState,
-             .layout = *pipelineLayout,
+             .layout = object.materialRef->pipelineLayout,
              .renderPass = nullptr},
             {.colorAttachmentCount = 1,
              .pColorAttachmentFormats = &ctx.swapChainSurfaceFormat.format,
              .depthAttachmentFormat = depthFormat}};
 
-    vk::raii::Pipeline graphicsPipeline(
+    object.materialRef->graphicsPipeline = vk::raii::Pipeline(
         ctx.device, nullptr,
         pipelineCreateInfoChain.get<vk::GraphicsPipelineCreateInfo>());
-
-    return {std::move(pipelineLayout), std::move(graphicsPipeline)};
   }
 };
 } // namespace WisE
