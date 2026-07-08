@@ -64,7 +64,6 @@ target_sources(prog
         source/modules/systemObject.cppm
         source/modules/imGUI.cppm
         source/modules/temp/grid.cppm
-        source/modules/draw.cppm
 
 )
 

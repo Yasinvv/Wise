@@ -11,6 +11,8 @@ module;
 #include <SDL3/SDL_main.h>
 #include <chrono>
 #include <thread>
+#include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan_raii.hpp>
 
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
@@ -41,7 +43,6 @@ import model;
 import systemObject;
 import grid;
 import imGUI;
-import draw;
 
 #ifdef NDEBUG
 constexpr bool enableValidationLayers = false;
@@ -92,7 +93,6 @@ private:
   WisE::Model_CTX model_ctx;
   WisE::ImGUI mainGUI;
   WisE::Grid grid;
-  WisE::Draw draw;
 
   WisE::InfiniteGrid m1_infiniteGrid;
 
@@ -191,10 +191,7 @@ private:
       float deltatime = timer.getDeltaTime();
       AppEvents();
       camera.updatePlayerMovement(deltatime);
-      draw.drawFrame(ctx, deltatime, configs, n0_swapchain, n0_commandBuffer,
-                     n1_window.window, event, camera, m1_infiniteGrid,
-                     model_ctx);
-
+      drawFrame(deltatime);
       FPSCalculation();
     }
     ctx.device.waitIdle();
@@ -301,5 +298,217 @@ private:
     ImGui::DestroyContext();
     SDL_DestroyWindow(n1_window.window);
     SDL_Quit();
+  }
+
+  void recordCommandBuffer(auto imageIndex, float& deltaTime) {
+    auto& commandBuffer = ctx.commandBuffers[ctx.frameIndex];
+    commandBuffer.begin({});
+
+    n0_commandBuffer.transition_image_layout(
+        ctx, ctx.swapChainImages[imageIndex], vk::ImageLayout::eUndefined,
+        vk::ImageLayout::eColorAttachmentOptimal, {},
+        vk::AccessFlagBits2::eColorAttachmentWrite,
+        vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+        vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+        vk::ImageAspectFlagBits::eColor);
+
+    n0_commandBuffer.transition_image_layout(
+        ctx, *ctx.depthImage, vk::ImageLayout::eUndefined,
+        vk::ImageLayout::eDepthAttachmentOptimal,
+        vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
+        vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
+        vk::PipelineStageFlagBits2::eEarlyFragmentTests |
+            vk::PipelineStageFlagBits2::eLateFragmentTests,
+        vk::PipelineStageFlagBits2::eEarlyFragmentTests |
+            vk::PipelineStageFlagBits2::eLateFragmentTests,
+        vk::ImageAspectFlagBits::eDepth);
+
+    vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
+    vk::ClearValue clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
+
+    vk::RenderingAttachmentInfo colorAttachmentInfo = {
+        .imageView = ctx.swapChainImageViews[imageIndex],
+        .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+        .loadOp = vk::AttachmentLoadOp::eClear,
+        .storeOp = vk::AttachmentStoreOp::eStore,
+        .clearValue = clearColor};
+
+    vk::RenderingAttachmentInfo depthAttachmentInfo = {
+        .imageView = ctx.depthImageView,
+        .imageLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal,
+        .loadOp = vk::AttachmentLoadOp::eClear,
+        .storeOp = vk::AttachmentStoreOp::eStore,
+        .clearValue = clearDepth};
+
+    vk::RenderingInfo renderingInfo = {
+        .renderArea = {.offset = {0, 0}, .extent = ctx.swapChainExtent},
+        .layerCount = 1,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &colorAttachmentInfo,
+        .pDepthAttachment = &depthAttachmentInfo};
+
+    commandBuffer.beginRendering(renderingInfo);
+
+    commandBuffer.setViewport(
+        0, vk::Viewport(
+               0.0f, 0.0f, static_cast<float>(ctx.swapChainExtent.width),
+               static_cast<float>(ctx.swapChainExtent.height), 0.0f, 1.0f));
+    commandBuffer.setScissor(
+        0, vk::Rect2D(vk::Offset2D(0, 0), ctx.swapChainExtent));
+
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
+                               *ctx.graphicsPipeline);
+    commandBuffer.bindVertexBuffers(0, *ctx.vertexBuffer, {0});
+    commandBuffer.bindIndexBuffer(
+        *ctx.indexBuffer, 0,
+        vk::IndexTypeValue<decltype(model_ctx.indices)::value_type>::value);
+    commandBuffer.bindDescriptorSets(
+        vk::PipelineBindPoint::eGraphics, ctx.pipelineLayout, 0,
+        *ctx.descriptorSets[ctx.frameIndex], nullptr);
+    commandBuffer.drawIndexed(static_cast<uint32_t>(model_ctx.indices.size()),
+                              1, 0, 0, 0);
+
+    commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
+                               *m1_infiniteGrid.graphicsPipeline);
+    commandBuffer.bindVertexBuffers(0, *m1_infiniteGrid.vertexBuffer, {0});
+    commandBuffer.bindIndexBuffer(*m1_infiniteGrid.indexBuffer, 0,
+                                  vk::IndexType::eUint32);
+
+    commandBuffer.bindDescriptorSets(
+        vk::PipelineBindPoint::eGraphics, *m1_infiniteGrid.pipelineLayout, 0,
+        *ctx.descriptorSets[ctx.frameIndex], nullptr);
+
+    commandBuffer.drawIndexed(m1_infiniteGrid.indexCount, 1, 0, 0, 0);
+
+    //
+    //
+    // IMGUI
+    //
+    //
+
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
+    ImGui::NewFrame();
+
+    ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Always);
+    ImGui::Begin("Debug Info", nullptr,
+                 ImGuiWindowFlags_NoDecoration |
+                     ImGuiWindowFlags_AlwaysAutoResize |
+                     ImGuiWindowFlags_NoSavedSettings |
+                     ImGuiWindowFlags_NoFocusOnAppearing |
+                     ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoBackground);
+
+    ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "FPS: %.1f (%.4f ms)",
+                       1.0f / deltaTime, deltaTime * 1000.0f);
+    ImGui::Text("VK1.4\nSDL3");
+    ImGui::Separator();
+    ImGui::PushItemWidth(50.0f);
+
+    uint8_t minFPS = 1, maxFPS = 240;
+
+    ImGui::SliderScalar("Max FPS Limit ( - , + )", ImGuiDataType_U8,
+                        &configs.MaxFPS, &minFPS, &maxFPS, "%u",
+                        ImGuiSliderFlags_AlwaysClamp);
+    ImGui::PopItemWidth();
+    ImGui::End();
+
+    ImGui::Render();
+
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), *commandBuffer);
+
+    //
+    //
+    //
+    //
+    //
+
+    commandBuffer.endRendering();
+
+    /*transition_image_layout(swapChainImages[imageIndex],
+                            vk::ImageLayout::eColorAttachmentOptimal,
+                            vk::ImageLayout::ePresentSrcKHR,
+                            vk::AccessFlagBits2::eColorAttachmentWrite, {},
+                            vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+                            vk::PipelineStageFlagBits2::eBottomOfPipe,
+                            vk::ImageAspectFlagBits::eColor);*/
+
+    n0_commandBuffer.transition_image_layout(
+        ctx, ctx.swapChainImages[imageIndex],
+        vk::ImageLayout::eColorAttachmentOptimal,
+        vk::ImageLayout::ePresentSrcKHR,
+        vk::AccessFlagBits2::eColorAttachmentWrite, vk::AccessFlagBits2::eNone,
+        vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+        vk::PipelineStageFlagBits2::eBottomOfPipe,
+        vk::ImageAspectFlagBits::eColor);
+    commandBuffer.end();
+  }
+  void drawFrame(float& deltaTime) {
+    // Note: inFlightFences, presentCompleteSemaphores, and commandBuffers are
+    // indexed by frameIndex,
+    //       while renderFinishedSemaphores is indexed by imageIndex
+    auto fenceResult = ctx.device.waitForFences(
+        {ctx.inFlightFences[ctx.frameIndex]}, vk::True, UINT64_MAX);
+    if (fenceResult != vk::Result::eSuccess) {
+      throw std::runtime_error("failed to wait for fence!");
+    }
+
+    auto [result, imageIndex] = ctx.swapChain.acquireNextImage(
+        UINT64_MAX, *ctx.presentCompleteSemaphores[ctx.frameIndex], nullptr);
+
+    // Due to VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS being defined,
+    // eErrorOutOfDateKHR can be checked as a result here and does not need to
+    // be caught by an exception.
+    if (result == vk::Result::eErrorOutOfDateKHR) {
+      n0_swapchain.recreateSwapChain(n1_window.window, event);
+      return;
+    }
+    // On other success codes than eSuccess and eSuboptimalKHR we just throw
+    // an exception. On any error code, aquireNextImage already threw an
+    // exception.
+    if (result != vk::Result::eSuccess &&
+        result != vk::Result::eSuboptimalKHR) {
+      assert(result == vk::Result::eTimeout || result == vk::Result::eNotReady);
+      throw std::runtime_error("failed to acquire swap chain image!");
+    }
+    n0_commandBuffer.updateUniformBuffer(ctx.frameIndex, ctx, camera);
+
+    // Only reset the fence if we are submitting work
+    ctx.device.resetFences(*ctx.inFlightFences[ctx.frameIndex]);
+
+    ctx.commandBuffers[ctx.frameIndex].reset();
+    recordCommandBuffer(imageIndex, deltaTime);
+
+    vk::PipelineStageFlags waitDestinationStageMask(
+        vk::PipelineStageFlagBits::eColorAttachmentOutput);
+    const vk::SubmitInfo submitInfo{
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &*ctx.presentCompleteSemaphores[ctx.frameIndex],
+        .pWaitDstStageMask = &waitDestinationStageMask,
+        .commandBufferCount = 1,
+        .pCommandBuffers = &*ctx.commandBuffers[ctx.frameIndex],
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores = &*ctx.renderFinishedSemaphores[imageIndex]};
+    ctx.queue.submit(submitInfo, *ctx.inFlightFences[ctx.frameIndex]);
+
+    const vk::PresentInfoKHR presentInfoKHR{
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &*ctx.renderFinishedSemaphores[imageIndex],
+        .swapchainCount = 1,
+        .pSwapchains = &*ctx.swapChain,
+        .pImageIndices = &imageIndex};
+    result = ctx.queue.presentKHR(presentInfoKHR);
+    // Due to VULKAN_HPP_HANDLE_ERROR_OUT_OF_DATE_AS_SUCCESS being defined,
+    // eErrorOutOfDateKHR can be checked as a result here and does not need to
+    // be caught by an exception.
+    if ((result == vk::Result::eSuboptimalKHR) ||
+        (result == vk::Result::eErrorOutOfDateKHR) || ctx.framebufferResized) {
+      ctx.framebufferResized = false;
+      n0_swapchain.recreateSwapChain(n1_window.window, event);
+    } else {
+      // There are no other success codes than eSuccess; on any error code,
+      // presentKHR already threw an exception.
+      assert(result == vk::Result::eSuccess);
+    }
+    ctx.frameIndex = (ctx.frameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
   }
 };
