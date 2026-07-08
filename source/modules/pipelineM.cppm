@@ -1,11 +1,10 @@
 module;
 
-#include <string>
 #include <vector>
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_raii.hpp>
 
-export module pipeline;
+export module pipelineM;
 import extra;
 import vertex;
 import context;
@@ -13,64 +12,42 @@ import context;
 namespace WisE {
 
 export class Pipeline {
+private:
 public:
-  struct PipelineConfigs {
-    std::string shaderPath{};
-    std::string vertexEntryPoint = "vertMain";
-    std::string fragmentEntryPoint = "fragMain";
-
-    vk::VertexInputBindingDescription bindingDescription =
-        WisE::Vertex::getBindingDescription();
-    std::array<vk::VertexInputAttributeDescription, 3> attributeDescriptions =
-        WisE::Vertex::getAttributeDescriptions();
-
-    vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleList;
-    vk::PolygonMode polygonMode = vk::PolygonMode::eFill;
-    vk::CullModeFlags cullMode = vk::CullModeFlagBits::eNone;
-    vk::FrontFace frontFace = vk::FrontFace::eCounterClockwise;
-
-    vk::Bool32 depthTestEnable = vk::True;
-    vk::Bool32 depthWriteEnable = vk::True;
-    vk::CompareOp depthCompareOp = vk::CompareOp::eLess;
-
-    vk::Bool32 blendEnable = vk::False;
-  };
-
-  void createGraphicsPipeline(VK_CTX& ctx, const PipelineConfigs& configs) {
+  void createGraphicsPipeline(WisE::VK_CTX& ctx) {
     vk::raii::ShaderModule shaderModule = WisE::createShaderModule(
-        WisE::readFile(configs.shaderPath), ctx.device);
+        WisE::readFile("data/shaders/slang.spv"), ctx.device);
 
     vk::PipelineShaderStageCreateInfo vertShaderStageInfo{
         .stage = vk::ShaderStageFlagBits::eVertex,
-        .module = *shaderModule,
-        .pName = configs.vertexEntryPoint.c_str()};
-
+        .module = shaderModule,
+        .pName = "vertMain"};
     vk::PipelineShaderStageCreateInfo fragShaderStageInfo{
         .stage = vk::ShaderStageFlagBits::eFragment,
-        .module = *shaderModule,
-        .pName = configs.fragmentEntryPoint.c_str()};
-
+        .module = shaderModule,
+        .pName = "fragMain"};
     vk::PipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo,
                                                         fragShaderStageInfo};
 
+    auto bindingDescription = WisE::Vertex::getBindingDescription();
+    auto attributeDescriptions = WisE::Vertex::getAttributeDescriptions();
     vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
         .vertexBindingDescriptionCount = 1,
-        .pVertexBindingDescriptions = &configs.bindingDescription,
+        .pVertexBindingDescriptions = &bindingDescription,
         .vertexAttributeDescriptionCount =
-            static_cast<uint32_t>(configs.attributeDescriptions.size()),
-        .pVertexAttributeDescriptions = configs.attributeDescriptions.data()};
-
+            static_cast<uint32_t>(attributeDescriptions.size()),
+        .pVertexAttributeDescriptions = attributeDescriptions.data()};
     vk::PipelineInputAssemblyStateCreateInfo inputAssembly{
-        .topology = configs.topology};
+        .topology = vk::PrimitiveTopology::eTriangleList};
     vk::PipelineViewportStateCreateInfo viewportState{.viewportCount = 1,
                                                       .scissorCount = 1};
 
     vk::PipelineRasterizationStateCreateInfo rasterizer{
         .depthClampEnable = vk::False,
         .rasterizerDiscardEnable = vk::False,
-        .polygonMode = configs.polygonMode,
-        .cullMode = configs.cullMode,
-        .frontFace = configs.frontFace,
+        .polygonMode = vk::PolygonMode::eFill,
+        .cullMode = vk::CullModeFlagBits::eNone,
+        .frontFace = vk::FrontFace::eCounterClockwise,
         .depthBiasEnable = vk::False,
         .lineWidth = 1.0f};
 
@@ -79,14 +56,13 @@ public:
         .sampleShadingEnable = vk::False};
 
     vk::PipelineDepthStencilStateCreateInfo depthStencil{
-        .depthTestEnable = configs.depthTestEnable,
-        .depthWriteEnable = configs.depthWriteEnable,
-        .depthCompareOp = configs.depthCompareOp,
+        .depthTestEnable = vk::True,
+        .depthWriteEnable = vk::True,
+        .depthCompareOp = vk::CompareOp::eLess,
         .depthBoundsTestEnable = vk::False,
         .stencilTestEnable = vk::False};
-
     vk::PipelineColorBlendAttachmentState colorBlendAttachment{
-        .blendEnable = configs.blendEnable,
+        .blendEnable = vk::False,
         .colorWriteMask =
             vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
             vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA};

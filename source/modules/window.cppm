@@ -15,7 +15,7 @@ export class Window {
 private:
 public:
   struct WindowSettings {
-    std::pair<uint32_t, uint32_t> getWindowConfgis(Configs& config) {
+    std::pair<uint16_t, uint16_t> getWindowConfgis(Configs& config) {
       return {config.WIDTH, config.HEIGHT};
     }
     const char* appname{};
@@ -34,8 +34,7 @@ public:
       SDL_Log("Could'nt Initializing SDL: %s", SDL_GetError());
     }
 
-    window = SDL_CreateWindow(ws.appname,width ,
-                              heght,
+    window = SDL_CreateWindow(ws.appname, width, heght,
                               SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
     if (!window) {
       SDL_Log("Error Creating Window: %s", SDL_GetError());

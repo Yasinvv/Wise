@@ -80,6 +80,7 @@ private:
   WisE::LogicalDevice n0_logicalDevice;
   WisE::Swapchain n0_swapchain;
   WisE::ImageViews n0_imageViews;
+  WisE::Pipeline::PipelineConfigs n0_pipelineConfigs;
   WisE::Pipeline n0_pipeline;
   WisE::Descriptor n0_descriptor;
   WisE::CommandPool n0_commandPool;
@@ -100,9 +101,14 @@ private:
     ctx.framebufferResized = true;
   }
 
-  void initVulkan() {
+  void init_Configs() {
     path.MODEL_PATH = "data/models/viking_room.obj";
     path.TEXTURE_PATH = "data/textures/viking_room.png";
+    n0_pipelineConfigs.shaderPath = "data/shaders/slang.spv";
+  }
+
+  void initVulkan() {
+    init_Configs();
 
     n0_instance.createInstance(ctx);
     SDL_Log("n0_instance OK");
@@ -128,7 +134,7 @@ private:
     n0_descriptor.createDescriptorSetLayout(ctx);
     SDL_Log("n0_descriptor OK");
 
-    n0_pipeline.createGraphicsPipeline(ctx);
+    n0_pipeline.createGraphicsPipeline(ctx, n0_pipelineConfigs);
     SDL_Log("n0_pipeline OK");
 
     n0_commandPool.createCommandPool(ctx);
