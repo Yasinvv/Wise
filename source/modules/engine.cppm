@@ -117,90 +117,51 @@ private:
     m1_infiniteGrid.materialRef = &m1_infiniteGrid_material;
 
     n0_instance.createInstance(ctx);
-    SDL_Log("n0_instance OK");
-
     n0_debugMessenger.setupDebugMessenger(ctx);
-    SDL_Log("n0_debugMessenger OK");
-
     n0_surface.createSurface(n1_window, ctx);
-    SDL_Log("n0_surface OK");
-
     n0_physicalDevice.pickPhysicalDevice(ctx);
-    SDL_Log("n0_physicalDevice OK");
-
     n0_logicalDevice.createLogicalDevice(ctx);
-    SDL_Log("n0_logicalDevice OK");
-
     n0_swapchain.createSwapChain(ctx, n1_window);
-    SDL_Log("n0_swapchain OK");
-
     n0_imageViews.createImageViews(ctx);
-    SDL_Log("n0_imageViews OK");
-
-    n0_descriptor.createDescriptorSetLayout(ctx, viking_room);
-    SDL_Log("n0_descriptor OK");
-
-    n0_descriptor.createDescriptorSetLayout(ctx, m1_infiniteGrid);
-    SDL_Log("m1_infiniteGrid descriptor layout OK");
-
-    n0_pipeline.createGraphicsPipeline(
-        ctx, viking_room.materialRef->descriptorSetLayout, n0_pipelineConfigs);
-    SDL_Log("n0_pipeline OK");
-
-    grid.createGridPipeline(ctx, m1_infiniteGrid);
-    SDL_Log("n0_gridPipeLine OK");
+    n0_depthResource.createDepthResources(ctx);
 
     n0_commandPool.createCommandPool(ctx);
-    SDL_Log("n0_commandPool OK");
-
-    n0_depthResource.createDepthResources(ctx);
-    SDL_Log("n0_depthResource OK");
-
-    n0_texture.createTextureImage(ctx, viking_room, n0_commandBuffer, path);
-    SDL_Log("n0_textureImage OK");
-
-    n0_texture.createTextureImageView(ctx, viking_room);
-    SDL_Log("n0_textureImageView OK");
-
-    n0_texture.createTextureSampler(ctx, viking_room);
-    SDL_Log("n0_textureSampler OK");
 
     n0_model.loadModel(path, model_ctx);
-    SDL_Log("n0_model OK");
+
+    n0_texture.createTextureImage(ctx, viking_room, n0_commandBuffer, path);
+    n0_texture.createTextureImageView(ctx, viking_room);
+    n0_texture.createTextureSampler(ctx, viking_room);
 
     grid.createGridMesh(ctx, m1_infiniteGrid, n0_commandBuffer);
-    SDL_Log("n0_gridMesh OK");
+    n0_commandBuffer.createVertexBuffer(ctx, viking_room, model_ctx);
+    n0_commandBuffer.createIndexBuffer(ctx, viking_room, model_ctx);
 
     n0_commandBuffer.createUniformBuffers(ctx, m1_infiniteGrid);
-    SDL_Log("m1_infiniteGrid uniformBuffers OK");
-
-    n0_descriptor.createDescriptorPool(ctx, m1_infiniteGrid);
-    n0_descriptor.createDescriptorSets(ctx, m1_infiniteGrid);
-    SDL_Log("m1_infiniteGrid Descriptors OK");
-
-    n0_commandBuffer.createVertexBuffer(ctx, viking_room, model_ctx);
-    SDL_Log("n0_vertexBuffer OK");
-
-    n0_commandBuffer.createIndexBuffer(ctx, viking_room, model_ctx);
-    SDL_Log("n0_indexBuffer OK");
-
     n0_commandBuffer.createUniformBuffers(ctx, viking_room);
-    SDL_Log("n0_unifromBuffer OK");
+
+    n0_descriptor.createDescriptorSetLayout(ctx, viking_room);
+    n0_descriptor.createDescriptorSetLayout(ctx, m1_infiniteGrid);
 
     n0_descriptor.createDescriptorPool(ctx, viking_room);
-    SDL_Log("n0_descriptorPool OK");
+    n0_descriptor.createDescriptorPool(ctx, m1_infiniteGrid);
 
+    n0_descriptor.createDescriptorSets(ctx, m1_infiniteGrid);
     n0_descriptor.createDescriptorSets(ctx, viking_room);
-    SDL_Log("n0_descriptorSet OK");
+
+    std::tie(viking_room_material.pipelineLayout,
+             viking_room_material.graphicsPipeline) =
+        n0_pipeline.createGraphicsPipeline(
+            ctx, viking_room.materialRef->descriptorSetLayout,
+            n0_pipelineConfigs);
+
+    grid.createGridPipeline(ctx, m1_infiniteGrid);
 
     n0_commandBuffer.createCommandBuffers(ctx);
-    SDL_Log("n0_commandBuffer OK");
-
     n0_systemObject.createSyncObjects(ctx);
-    SDL_Log("n0_systemObject OK");
-
     mainGUI.initImGui(ctx, n1_window);
-    SDL_Log("n0_imGUI OK");
+
+    SDL_Log("WisE : initVulkan OK");
   }
 
   void mainLoop() {

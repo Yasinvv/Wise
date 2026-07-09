@@ -55,27 +55,35 @@ public:
     object.descriptorSets = ctx.device.allocateDescriptorSets(allocInfo);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+      std::vector<vk::WriteDescriptorSet> descriptorWrites;
+
       vk::DescriptorBufferInfo bufferInfo{.buffer = object.uniformBuffers[i],
                                           .offset = 0,
                                           .range = sizeof(UniformBufferObject)};
-      vk::DescriptorImageInfo imageInfo{
-          .sampler = object.materialRef->textureSampler,
-          .imageView = object.materialRef->textureImageView,
-          .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal};
 
-      std::array<vk::WriteDescriptorSet, 2> descriptorWrites{
-          {{.dstSet = object.descriptorSets[i],
-            .dstBinding = 0,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = vk::DescriptorType::eUniformBuffer,
-            .pBufferInfo = &bufferInfo},
-           {.dstSet = object.descriptorSets[i],
-            .dstBinding = 1,
-            .dstArrayElement = 0,
-            .descriptorCount = 1,
-            .descriptorType = vk::DescriptorType::eCombinedImageSampler,
-            .pImageInfo = &imageInfo}}};
+      descriptorWrites.push_back(
+          {.dstSet = object.descriptorSets[i],
+           .dstBinding = 0,
+           .dstArrayElement = 0,
+           .descriptorCount = 1,
+           .descriptorType = vk::DescriptorType::eUniformBuffer,
+           .pBufferInfo = &bufferInfo});
+
+      vk::DescriptorImageInfo imageInfo{};
+      if (object.materialRef->textureImageView != nullptr) {
+        imageInfo.sampler = object.materialRef->textureSampler;
+        imageInfo.imageView = object.materialRef->textureImageView;
+        imageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+
+        descriptorWrites.push_back(
+            {.dstSet = object.descriptorSets[i],
+             .dstBinding = 1,
+             .dstArrayElement = 0,
+             .descriptorCount = 1,
+             .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+             .pImageInfo = &imageInfo});
+      }
+
       ctx.device.updateDescriptorSets(descriptorWrites, {});
     }
   }
