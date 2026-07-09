@@ -20,7 +20,7 @@ struct VertexToFragment {
 };
 
 [shader("vertex")]
-VertexToFragment vertexMain(VertexInput input) {
+VertexToFragment vertMain(VertexInput input) {
   VertexToFragment output;
 
   float4x4 mvp = mul(ubo.proj, mul(ubo.view, ubo.model));
@@ -41,7 +41,7 @@ float4 fragMain(VertexToFragment input) : SV_Target {
   float2 grid = abs(vulkan_fract(coord - 0.5) - 0.5) / derivative;
   float line = min(grid.x, grid.y);
 
-  float minimum_width = 2.0;
+  float minimum_width = 0.5;
   float alpha = 1.0 - min(line / minimum_width, 1.0);
 
   float2 check = vulkan_fract(floor(coord) * 0.5);

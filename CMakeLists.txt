@@ -63,7 +63,7 @@ target_sources(prog
         source/modules/model.cppm
         source/modules/systemObject.cppm
         source/modules/imGUI.cppm
-        source/modules/temp/grid.cppm
+        source/modules/mesh.cppm
 
 )
 

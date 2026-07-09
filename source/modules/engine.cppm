@@ -41,7 +41,7 @@ import commandBuffer;
 import texture;
 import model;
 import systemObject;
-import grid;
+import mesh;
 import imGUI;
 
 #ifdef NDEBUG
@@ -82,6 +82,7 @@ private:
   WisE::Swapchain n0_swapchain;
   WisE::ImageViews n0_imageViews;
   WisE::Pipeline::PipelineConfigs n0_pipelineConfigs;
+  WisE::Pipeline::PipelineConfigs n1_pipelineConfigs;
   WisE::Pipeline n0_pipeline;
   WisE::Descriptor n0_descriptor;
   WisE::CommandPool n0_commandPool;
@@ -108,6 +109,7 @@ private:
     path.MODEL_PATH = "data/models/viking_room.obj";
     path.TEXTURE_PATH = "data/textures/viking_room.png";
     n0_pipelineConfigs.shaderPath = "data/shaders/slang.spv";
+    n1_pipelineConfigs.shaderPath = "data/shaders/grid.spv";
   }
 
   void initVulkan() {
@@ -133,7 +135,7 @@ private:
     n0_texture.createTextureImageView(ctx, viking_room);
     n0_texture.createTextureSampler(ctx, viking_room);
 
-    grid.createGridMesh(ctx, m1_infiniteGrid, n0_commandBuffer);
+    grid.createMesh(ctx, m1_infiniteGrid, n0_commandBuffer);
     n0_commandBuffer.createVertexBuffer(ctx, viking_room, model_ctx);
     n0_commandBuffer.createIndexBuffer(ctx, viking_room, model_ctx);
 
@@ -154,8 +156,11 @@ private:
         n0_pipeline.createGraphicsPipeline(
             ctx, viking_room.materialRef->descriptorSetLayout,
             n0_pipelineConfigs);
-
-    grid.createGridPipeline(ctx, m1_infiniteGrid);
+    std::tie(m1_infiniteGrid_material.pipelineLayout,
+             m1_infiniteGrid_material.graphicsPipeline) =
+        n0_pipeline.createGraphicsPipeline(
+            ctx, m1_infiniteGrid.materialRef->descriptorSetLayout,
+            n1_pipelineConfigs);
 
     n0_commandBuffer.createCommandBuffers(ctx);
     n0_systemObject.createSyncObjects(ctx);
