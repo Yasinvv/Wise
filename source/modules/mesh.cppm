@@ -11,17 +11,17 @@ import commandBuffer;
 
 namespace WisE {
 
-export class Grid {
+export class Mesh {
 
 private:
 public:
   void createMesh(VK_CTX& ctx, Object_CTX& object,
                   CommandBuffer& m_commandBuffer) {
     std::vector<Vertex> gridVertices = {
-        {{-50.0f, -50.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {-50.0f, -50.0f}},
-        {{50.0f, -50.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {50.0f, -50.0f}},
-        {{50.0f, 50.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {50.0f, 50.0f}},
-        {{-50.0f, 50.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {-50.0f, 50.0f}}};
+        {{-500.0f, -500.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {-500.0f, -500.0f}},
+        {{500.0f, -500.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {500.0f, -500.0f}},
+        {{500.0f, 500.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {500.0f, 500.0f}},
+        {{-500.0f, 500.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {-500.0f, 500.0f}}};
 
     std::vector<uint32_t> gridIndices = {0, 1, 2, 2, 3, 0};
 

@@ -120,20 +120,21 @@ public:
     }
   }
   void updateUniformBuffer(uint32_t currentImage, VK_CTX& ctx,
-                           Object_CTX& object, Camera& camera) {
+                           Object_CTX& object,
+                           Camera::Settings& cameraSettings) {
     //[[maybe_unused]] float time{timer.getTime()};
 
     UniformBufferObject ubo{};
     ubo.model = rotate(glm::mat4(1.0f), glm::radians(-90.0f),
                        glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.view = glm::lookAt(camera.settings.pos,
-                           camera.settings.pos + camera.settings.front,
-                           camera.settings.up);
+    ubo.view = glm::lookAt(cameraSettings.pos,
+                           cameraSettings.pos + cameraSettings.front,
+                           cameraSettings.up);
     ubo.proj =
         glm::perspective(glm::radians(45.0f),
                          static_cast<float>(ctx.swapChainExtent.width) /
                              static_cast<float>(ctx.swapChainExtent.height),
-                         0.1f, 25.0f);
+                         0.1f, 100.0f);
     ubo.proj[1][1] *= -1;
 
     memcpy(object.uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));

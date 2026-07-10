@@ -72,6 +72,7 @@ private:
   WisE::Path path;
   WisE::UniformTime timer;
   WisE::Camera camera;
+  WisE::Camera::Settings cameraSettings;
   WisE::Window n0_window;
   WisE::Window n1_window;
   WisE::Instance n0_instance;
@@ -81,9 +82,8 @@ private:
   WisE::LogicalDevice n0_logicalDevice;
   WisE::Swapchain n0_swapchain;
   WisE::ImageViews n0_imageViews;
-  WisE::Pipeline::PipelineConfigs n0_pipelineConfigs;
-  WisE::Pipeline::PipelineConfigs n1_pipelineConfigs;
-  WisE::Pipeline n0_pipeline;
+  WisE::PipelineConfigs n0_pipelineConfigs;
+  WisE::PipelineConfigs n1_pipelineConfigs;
   WisE::Descriptor n0_descriptor;
   WisE::CommandPool n0_commandPool;
   WisE::DepthResource n0_depthResource;
@@ -93,7 +93,7 @@ private:
   WisE::SystemObject n0_systemObject;
   WisE::Model_CTX model_ctx;
   WisE::ImGUI mainGUI;
-  WisE::Grid grid;
+  WisE::Mesh mesh;
 
   WisE::Material viking_room_material;
   WisE::Object_CTX viking_room;
@@ -110,6 +110,7 @@ private:
     path.TEXTURE_PATH = "data/textures/viking_room.png";
     n0_pipelineConfigs.shaderPath = "data/shaders/slang.spv";
     n1_pipelineConfigs.shaderPath = "data/shaders/grid.spv";
+    cameraSettings.cameraSpeed = 5;
   }
 
   void initVulkan() {
@@ -135,7 +136,7 @@ private:
     n0_texture.createTextureImageView(ctx, viking_room);
     n0_texture.createTextureSampler(ctx, viking_room);
 
-    grid.createMesh(ctx, m1_infiniteGrid, n0_commandBuffer);
+    mesh.createMesh(ctx, m1_infiniteGrid, n0_commandBuffer);
     n0_commandBuffer.createVertexBuffer(ctx, viking_room, model_ctx);
     n0_commandBuffer.createIndexBuffer(ctx, viking_room, model_ctx);
 
@@ -153,14 +154,14 @@ private:
 
     std::tie(viking_room_material.pipelineLayout,
              viking_room_material.graphicsPipeline) =
-        n0_pipeline.createGraphicsPipeline(
-            ctx, viking_room.materialRef->descriptorSetLayout,
-            n0_pipelineConfigs);
+        createGraphicsPipeline(ctx,
+                               viking_room.materialRef->descriptorSetLayout,
+                               n0_pipelineConfigs);
     std::tie(m1_infiniteGrid_material.pipelineLayout,
              m1_infiniteGrid_material.graphicsPipeline) =
-        n0_pipeline.createGraphicsPipeline(
-            ctx, m1_infiniteGrid.materialRef->descriptorSetLayout,
-            n1_pipelineConfigs);
+        createGraphicsPipeline(ctx,
+                               m1_infiniteGrid.materialRef->descriptorSetLayout,
+                               n1_pipelineConfigs);
 
     n0_commandBuffer.createCommandBuffers(ctx);
     n0_systemObject.createSyncObjects(ctx);
@@ -171,9 +172,10 @@ private:
 
   void mainLoop() {
     while (appState) {
+      init_Configs();
       float deltatime = timer.getDeltaTime();
       AppEvents();
-      camera.updatePlayerMovement(deltatime);
+      camera.updatePlayerMovement(cameraSettings, deltatime);
       drawFrame(deltatime);
       FPSCalculation();
     }
@@ -237,34 +239,34 @@ private:
           appState = false;
         }
         if (event.key.scancode == SDL_SCANCODE_D) {
-          camera.settings.wasd |= 1;
+          cameraSettings.wasd |= 1;
         }
         if (event.key.scancode == SDL_SCANCODE_A) {
-          camera.settings.wasd |= 4;
+          cameraSettings.wasd |= 4;
         }
         if (event.key.scancode == SDL_SCANCODE_W) {
-          camera.settings.wasd |= 8;
+          cameraSettings.wasd |= 8;
         }
         if (event.key.scancode == SDL_SCANCODE_S) {
-          camera.settings.wasd |= 2;
+          cameraSettings.wasd |= 2;
         }
         break;
       case SDL_EVENT_KEY_UP:
         if (event.key.scancode == SDL_SCANCODE_D) {
-          camera.settings.wasd &= 30;
+          cameraSettings.wasd &= 30;
         }
         if (event.key.scancode == SDL_SCANCODE_A) {
-          camera.settings.wasd &= 27;
+          cameraSettings.wasd &= 27;
         }
         if (event.key.scancode == SDL_SCANCODE_W) {
-          camera.settings.wasd &= 23;
+          cameraSettings.wasd &= 23;
         }
         if (event.key.scancode == SDL_SCANCODE_S) {
-          camera.settings.wasd &= 29;
+          cameraSettings.wasd &= 29;
         }
         break;
       case SDL_EVENT_MOUSE_MOTION:
-        camera.settings.addRotation(event.motion.xrel, event.motion.yrel);
+        cameraSettings.addRotation(event.motion.xrel, event.motion.yrel);
         break;
       }
     }
@@ -458,7 +460,7 @@ private:
       throw std::runtime_error("failed to acquire swap chain image!");
     }
     n0_commandBuffer.updateUniformBuffer(ctx.frameIndex, ctx, viking_room,
-                                         camera);
+                                         cameraSettings);
 
     // Only reset the fence if we are submitting work
     ctx.device.resetFences(*ctx.inFlightFences[ctx.frameIndex]);

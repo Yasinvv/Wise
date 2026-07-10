@@ -33,9 +33,8 @@ public:
       front = glm::normalize(direction);
     }
   };
-  Settings settings;
 
-  void updatePlayerMovement(float& deltaTime) {
+  void updatePlayerMovement(Settings& settings, float& deltaTime) {
     float velocity = settings.cameraSpeed * deltaTime;
 
     if (settings.wasd & 8)
