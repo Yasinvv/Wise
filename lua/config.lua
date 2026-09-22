@@ -1,3 +1,3 @@
-SetMaxFPS = 55
+SetMaxFPS = 59
 WIDTH = 1920
 HEIGHT = 1080
