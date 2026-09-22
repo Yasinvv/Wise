@@ -1,7 +1,7 @@
 * TODO
 ** Short Term
    - (x) Move recoredCommandBuffer to the main loop .
-   - (-) Refactor the Context.cppm .
+   - (x) Refactor the Context.cppm .
    - (-) Delete the CommandBuffers Class at the end .
 
 ** Long Term
@@ -11,7 +11,7 @@
   -- (-) Read /RealTime Rendering 4th Edition/
   -- (=) learn /Slang/
   -- (-) Read /Foundations of Game Engine Development, Volume 1 Mathematics/
-  --- ( ) check /No BS Guide To Linear Algebra & Math and physics/
+   --- (-) check /No BS Guide To Linear Algebra & Math and physics/
 
 
 

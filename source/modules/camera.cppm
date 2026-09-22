@@ -35,18 +35,23 @@ public:
   };
 
   void updatePlayerMovement(Settings& settings, float& deltaTime) {
-    float velocity = settings.cameraSpeed * deltaTime;
+    glm::vec3 moveDirection(0.0f);
 
     if (settings.wasd & 8)
-      settings.pos += settings.front * velocity;
+      moveDirection += settings.front;
     if (settings.wasd & 2)
-      settings.pos -= settings.front * velocity;
+      moveDirection -= settings.front;
 
     glm::vec3 right = glm::normalize(glm::cross(settings.front, settings.up));
     if (settings.wasd & 1)
-      settings.pos += right * velocity;
+      moveDirection += right;
     if (settings.wasd & 4)
-      settings.pos -= right * velocity;
+      moveDirection -= right;
+
+    if (glm::length(moveDirection) > 0.0f) {
+      moveDirection = glm::normalize(moveDirection);
+      settings.pos += moveDirection * settings.cameraSpeed * deltaTime;
+    }
   }
 };
 } // namespace WisE
